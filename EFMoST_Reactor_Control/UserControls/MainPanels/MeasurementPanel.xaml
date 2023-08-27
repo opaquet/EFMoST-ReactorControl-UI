@@ -1,0 +1,102 @@
+﻿<UserControl x:Class="UI.UserControls.MainPanels.MeasurementPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:UI.UserControls"
+             mc:Ignorable="d" 
+             d:DesignHeight="720" d:DesignWidth="960">
+    <Border x:Name="Panel" Visibility="Visible" Margin="10" CornerRadius="30">
+
+        <Border.Background>
+            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                <GradientStop Color="#B0B0B0"/>
+                <GradientStop Color="#B0B0B0" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="35"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="30*"/>
+                <RowDefinition Height="10"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="5*"/>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="30"/>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="30"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="5*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="5*"/>
+                <ColumnDefinition Width="10"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="1" Text="Messwertübersicht" HorizontalAlignment="Center" Margin="0" VerticalAlignment="Top" Grid.ColumnSpan="9" Padding="0" FontSize="28" FontWeight="Black" Foreground="White">
+                <TextBlock.Effect>
+                    <DropShadowEffect/>
+                </TextBlock.Effect>
+            </TextBlock>
+
+            <!-- Messwert Anzeige-->
+            <!-- erste spalte-->
+            <local:ValueDisplayBar x:Name="v1" DataContext="{Binding MeasurementValues[0]}" Grid.Column="1" Grid.Row="2" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v2" DataContext="{Binding MeasurementValues[1]}" Grid.Column="1" Grid.Row="4" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v3" DataContext="{Binding MeasurementValues[2]}" Grid.Column="1" Grid.Row="6" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v4" DataContext="{Binding MeasurementValues[3]}" Grid.Column="1" Grid.Row="8" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v5" DataContext="{Binding MeasurementValues[4]}" Grid.Column="1" Grid.Row="10" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v6" DataContext="{Binding MeasurementValues[5]}" Grid.Column="1" Grid.Row="12" MouseDown="Bar_Click"/>
+
+            <!-- zweite spalte-->
+            <local:ValueDisplayBar x:Name="v7" DataContext="{Binding MeasurementValues[6]}" Grid.Column="7" Grid.Row="2" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v8" DataContext="{Binding MeasurementValues[7]}" Grid.Column="7" Grid.Row="4" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v9" DataContext="{Binding MeasurementValues[8]}" Grid.Column="7" Grid.Row="6" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v10" DataContext="{Binding MeasurementValues[9]}" Grid.Column="7" Grid.Row="8" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v11" DataContext="{Binding MeasurementValues[10]}" Grid.Column="7" Grid.Row="10" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v12" DataContext="{Binding MeasurementValues[11]}" Grid.Column="7" Grid.Row="12" MouseDown="Bar_Click"/>
+
+            <!-- dritte spalte-->
+            <local:ValueDisplayBar x:Name="v13" DataContext="{Binding MeasurementValues[12]}" Grid.Column="9" Grid.Row="2" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v14" DataContext="{Binding MeasurementValues[13]}" Grid.Column="9" Grid.Row="4" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v15" DataContext="{Binding MeasurementValues[14]}" Grid.Column="9" Grid.Row="6" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v16" DataContext="{Binding MeasurementValues[15]}" Grid.Column="9" Grid.Row="8" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v17" DataContext="{Binding MeasurementValues[16]}" Grid.Column="9" Grid.Row="10" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v18" DataContext="{Binding MeasurementValues[17]}" Grid.Column="9" Grid.Row="12" MouseDown="Bar_Click"/>
+
+            <!-- Zustandsindikatoren (Aktiv & Alarm) -->
+            <local:DigitalStateIndicator DataContext="{Binding ControlActiveIndicators[0]}" Grid.Column="3" Grid.Row="2"/>
+            <local:DigitalStateIndicator DataContext="{Binding ControlActiveIndicators[1]}" Grid.Column="3" Grid.Row="4"/>
+            <local:DigitalStateIndicator DataContext="{Binding ControlActiveIndicators[2]}" Grid.Column="3" Grid.Row="6"/>
+            <local:DigitalStateIndicator DataContext="{Binding ControlActiveIndicators[3]}" Grid.Column="3" Grid.Row="8"/>
+            <local:DigitalStateIndicator DataContext="{Binding ControlActiveIndicators[4]}" Grid.Column="3" Grid.Row="10"/>
+            <local:DigitalStateIndicator DataContext="{Binding ControlActiveIndicators[5]}" Grid.Column="3" Grid.Row="12"/>
+            <local:DigitalStateIndicator DataContext="{Binding AlarmIndicators[0]}" Grid.Column="5" Grid.Row="2"/>
+            <local:DigitalStateIndicator DataContext="{Binding AlarmIndicators[1]}" Grid.Column="5" Grid.Row="4"/>
+            <local:DigitalStateIndicator DataContext="{Binding AlarmIndicators[2]}" Grid.Column="5" Grid.Row="6"/>
+            <local:DigitalStateIndicator DataContext="{Binding AlarmIndicators[3]}" Grid.Column="5" Grid.Row="8"/>
+            <local:DigitalStateIndicator DataContext="{Binding AlarmIndicators[4]}" Grid.Column="5" Grid.Row="10"/>
+
+            <!-- XY Graph -->
+
+            <local:XYGraph x:Name="XYGraph" Grid.Column="1" Grid.ColumnSpan="9" Grid.Row="14"/>
+
+        </Grid>
+    </Border>
+
+
+
+</UserControl>

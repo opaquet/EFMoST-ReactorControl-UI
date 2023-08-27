@@ -1,0 +1,50 @@
+﻿<UserControl x:Class="UI.UserControls.ReactorControlPanels.AutoTempControlPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:UI.UserControls"
+             xmlns:converter="clr-namespace:UI.Converter"
+             mc:Ignorable="d" 
+             d:DesignHeight="270" d:DesignWidth="455">
+    <UserControl.Resources>
+        <converter:BoolInvertedToVisibility x:Key="BoolToVisibility"/>
+    </UserControl.Resources>
+    <Border Grid.Column="1" Grid.Row="6" Background="#fafafa" CornerRadius="20" >
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="1"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="25"/>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="10"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="10"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Automatische Temperaturregelung:" FontSize="16" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5"></TextBlock>
+            <local:DigitalStateIndicator Grid.Row="1" Grid.Column="7" DataContext="{Binding AutomaticIndicators[4]}" HorizontalAlignment="Right" VerticalAlignment="Center" Width="25" Height="25"/>
+            <local:UpDownButton Grid.Row="3" Grid.Column="1" DataContext="{Binding ControlSettingValues[0]}"/>
+            <local:UpDownButton Grid.Row="3" Grid.Column="3" DataContext="{Binding ControlSettingValues[10]}"/>
+            <local:UpDownButton Grid.Row="3" Grid.Column="5" DataContext="{Binding ControlSettingValues[11]}"/>
+            <local:UpDownButton Grid.Row="3" Grid.Column="7" DataContext="{Binding ControlSettingValues[12]}"/>
+            <local:UpDownButton Grid.Row="5" Grid.Column="5" DataContext="{Binding ControlSettingValues[13]}"/>
+            <local:UpDownButton Grid.Row="5" Grid.Column="7" DataContext="{Binding ControlSettingValues[14]}"/>
+
+            <Border CornerRadius="15" x:Name="BorderCover1" Grid.Column="1" Grid.ColumnSpan="7" Grid.Row="3" Grid.RowSpan="3" Background="#80fafafa" DataContext="{Binding IndicatorAutomation[4]}" Visibility="{Binding isIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
+        </Grid>
+    </Border>
+</UserControl>

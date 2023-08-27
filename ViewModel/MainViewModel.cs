@@ -1,0 +1,79 @@
+﻿using Core.DataTypes;
+using ViewModel.ViewModels;
+
+namespace ViewModel
+{
+
+    public class MainViewModel : BaseViewModel, IDisposable {
+
+        private Core.Manager? _coreManger;
+        public ProcessControlDataSource AutomaticControlDataSource { get; set; } = ProcessControlDataSource.Measurement;
+        public DeviceViewModel GasSensor { get; private set; }
+        public ValueViewModel GasSensorStateValue { get; private set; }
+        public DeviceViewModel Controller { get; private set; }
+
+        public IReadOnlyList<ValueViewModel> MeasurementValues { get; private set; }
+        public IReadOnlyList<ValueViewModel> SetPointValues { get; private set; }
+        public IReadOnlyList<ValueViewModel> AnalogOutValues { get; private set; }
+        public IReadOnlyList<ValueViewModel> GasSensorEnviromentValues { get; private set; }
+        public IReadOnlyList<ValueViewModel> DigitalOutIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel> AutomaticIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel> ControlActiveIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel> AlarmIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel> ControlSettingValues { get; private set; }
+        public ChartViewModel Chart { get; private set; }
+        public ValueViewModel IndicatorDirectControl { get; private set; }
+
+        public LogStringViewModel ApplicationLog { get; private set; }
+
+        public MainViewModel() {
+            // create the manager instance from the core program logic first
+            _coreManger = Factory.CreateManagerInstance();
+
+            // now creat sub ViewModels
+            ApplicationLog = Factory.CreateLogViewModel(_coreManger.appEventLog);
+
+            GasSensor = Factory.CreateDeviceViewModel(_coreManger?.devHandler?.Devices?[0], _coreManger?.deviceLogs?[0] );
+            Controller = Factory.CreateDeviceViewModel(_coreManger?.devHandler?.Devices?[1], _coreManger?.deviceLogs?[1] );
+
+            GasSensorStateValue = Factory.CreateGasSenoserStatusValueViewModel(_coreManger);
+
+            MeasurementValues = Factory.CreateMeasurementValueViewModels(_coreManger);
+            SetPointValues = Factory.CreateSetPointValueViewModels(_coreManger);
+            AnalogOutValues = Factory.CreateAnalogOutValueViewModels(_coreManger);
+            GasSensorEnviromentValues = Factory.CreateGasSenoserEnviromentValueViewModels(_coreManger);
+            DigitalOutIndicators = Factory.CreateDigitalOutIndicatorViewModels(_coreManger);
+            AutomaticIndicators = Factory.CreateAutomationIndicatorViewModels(_coreManger);
+            ControlActiveIndicators = Factory.CreateControlActiveIndicatorViewModels(_coreManger);
+            AlarmIndicators = Factory.CreateAlarmIndicatorViewModels(_coreManger);
+
+            ControlSettingValues = Factory.CreateControlSettingValueViewModels(_coreManger);
+
+            IndicatorDirectControl = Factory.CreateIndicatorDirectControlViewModel(_coreManger);
+
+            Chart = Factory.CreateChartViewModel(_coreManger, MeasurementValues);
+        }
+
+        public override void Dispose() {
+            Factory.UnsubscribeFromAllEvents(_coreManger);
+            GasSensor?.Dispose();
+            Controller?.Dispose();
+
+            foreach (var item in MeasurementValues) { item.Dispose(); }
+            foreach (var item in AnalogOutValues) { item.Dispose(); }
+            foreach (var item in GasSensorEnviromentValues) { item.Dispose(); }
+            foreach (var item in DigitalOutIndicators) { item.Dispose(); }
+            foreach (var item in AutomaticIndicators) { item.Dispose(); }
+            foreach (var item in ControlActiveIndicators) { item.Dispose(); }
+            foreach (var item in AlarmIndicators) { item.Dispose(); }
+            GasSensorStateValue?.Dispose();
+            IndicatorDirectControl?.Dispose();
+
+            ApplicationLog?.Dispose();
+
+            _coreManger?.Dispose();
+
+            GC.SuppressFinalize(this);
+        }
+    }
+}

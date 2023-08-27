@@ -1,0 +1,254 @@
+﻿<UserControl x:Class="UI.UserControls.MainPanels.StatusPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:UI.UserControls"
+             mc:Ignorable="d" 
+             d:DesignHeight="720" d:DesignWidth="1000">
+    <Border x:Name="Panel" Visibility="Visible" BorderThickness="0" Grid.Column="2" Margin="10" Grid.ColumnSpan="2" CornerRadius="30" Background="#b0b0b0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="10"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="840"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="10"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="2" Grid.Row="0" Text="Prozessfluss Diagramm" HorizontalAlignment="Center" Margin="0,0,0,0" VerticalAlignment="Top" FontSize="28" FontWeight="Black" Foreground="White">
+                <TextBlock.Effect>
+                    <DropShadowEffect/>
+                </TextBlock.Effect>
+            </TextBlock>
+            <Canvas Grid.Column="2" Grid.Row="1">
+                <Canvas.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="Scale" ScaleX ="1" ScaleY ="1"/>
+                        <TranslateTransform x:Name="Translate" X="0" Y="20"/>
+                    </TransformGroup>
+                </Canvas.RenderTransform>
+
+
+                <!-- Reaktor -->
+                <Path StrokeThickness="5" Fill="White" Stroke="Black" 
+                          Data="M300,100 V300 A100,50,0,0,0,500,300 V100 A100,50,0,0,0,300,100" />
+                <!-- Kühlmantel -->
+                <Path StrokeThickness="2" Fill="Azure" Stroke="Black" 
+                          Data="M300,120 L290,130 V280 L300,290 Z" />
+                <Path StrokeThickness="2" Fill="Azure" Stroke="Black" 
+                          Data="M500,120 L510,130 V280 L500,290 Z" />
+                <Path StrokeThickness="2" Fill="Azure" Stroke="Black" 
+                          Data="M300,300 A100,50,0,0,0,500,300 L508,305 A101,50,0,0,1,292,305 Z" />
+
+                <!-- Wasser / Füllung -->
+                <Path StrokeThickness="2" Fill="LightBlue" Stroke="LightBlue">
+                    <Path.Data>
+                        <PathGeometry>
+                            <PathGeometry.Figures>
+                                <PathFigure x:Name="pic_LevelP1" StartPoint="308,150">
+                                    <PathFigure.Segments>
+                                        <LineSegment  Point="308,297"/>
+                                        <ArcSegment Size="90,44" Point="492,297"/>
+                                        <LineSegment x:Name="pic_LevelP2" Point="492,150"/>
+                                    </PathFigure.Segments>
+                                </PathFigure>
+                            </PathGeometry.Figures>
+                        </PathGeometry>
+                    </Path.Data>
+                </Path>
+
+                <!-- Rührerblatt -->
+                <Path StrokeThickness="6" Stroke="#000000" 
+                          Data="M540,295 H450"/>
+                <Path x:Name="Rührerblatt" StrokeThickness="2" Fill="#606060" Stroke="#000000" 
+                           Data="M450,295 A5,15,180,0,0,450,325 A5,15,180,0,0,450,295 A5,15,180,0,1,450,265 A5,15,180,0,1,450,295"/>
+
+                <!-- Feed -->
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M10,30 H80 L90,40 L80,50 H10 Z"/>
+                <TextBlock Text="Feed" Margin="15,31,0,0"/>
+                <!-- Feed Pipes -->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M90,40 H350 V80"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,35 L150,40"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,45 L150,40"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M355,70 L350,80"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M345,70 L350,80"/>
+                <!-- FeedPump -->
+                <Ellipse x:Name="p_feed" Stroke="Black" StrokeThickness="2" Height="30" Width="30" Margin="150,25" Fill="LightGray"></Ellipse>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M160,28 L178,40"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M160,52 L178,40"/>
+                <Path  StrokeThickness="1" Fill="White"  Stroke="Black" Data="M130,-15 H200 V25 H130 Z "/>
+                <TextBlock x:Name="l_feed" Text="0,0 L/h" Foreground="#9090ff" Margin="135,-14,0,0"/>
+                <TextBlock x:Name="lr_feed" Text="0,0 L/h" Foreground="#B00606" Margin="135,6,0,0"/>
+
+                <!-- Wasser -->
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M10,80 H80 L90,90 L80,100 H10 Z"/>
+                <TextBlock Text="Wasser" Margin="15,81,0,0"/>
+                <!-- Wasser Pipes -->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M90,90 H320 V105 "/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,85 L150,90"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,95 L150,90"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M315,95 L320,105"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M325,95 L320,105"/>
+                <!-- Wasser Ventil -->
+                <Path x:Name="v_water" StrokeThickness="2" Fill="LightGray"  Stroke="Black" Data="M150,75 V105 L180,75 V105 Z "/>
+
+                <!-- Kühlwasser -->
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M10,320 H80 L90,340 L80,360 H10 Z"/>
+                <TextBlock Text="Kühlwasser" Margin="15,321,0,0"/>
+                <TextBlock Text="Vorlauf" Margin="15,341,0,0"/>
+                <!-- Kühlwasser Pipes -->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M90,340 H300 L308,332 "/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M120,340 V260 H290 "/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,335 L150,340"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,345 L150,340"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M298,332 H308 V342 "/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,255 L150,260"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,265 L150,260"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M280,255 L290,260"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M280,265 L290,260"/>
+                <!-- Kühlwasser Ventile -->
+                <Path x:Name="v_coolwater_m" StrokeThickness="2" Fill="LightGray"  Stroke="Black" Data="M150,245 V275 L180,245 V275 Z "/>
+                <Path x:Name="v_coolwater_b" StrokeThickness="2" Fill="LightGray"  Stroke="Black" Data="M150,325 V355 L180,325 V355 Z "/>
+
+                <!-- Druckluft -->
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M10,400 H80 L90,410 L80,420 H10 Z"/>
+                <TextBlock Text="Druckluft" Margin="15,401,0,0"/>
+                <!-- Druckluft Pipes -->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M90,410 H380 V330 "/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,405 L150,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M140,415 L150,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M250,405 L260,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M250,415 L260,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M375,340 L380,330"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M385,340 L380,330"/>
+                <!-- Druckluft Ventile -->
+                <Path x:Name="v_air" StrokeThickness="2" Fill="LightGray"  Stroke="Black" Data="M150,395 V425 L180,395 V425 Z "/>
+                <Path x:Name="v_air_prop" StrokeThickness="2" Fill="LightGray"  Stroke="Black" Data="M260,395 V425 L290,395 V425 Z "/>
+                <Path  StrokeThickness="2" Fill="White"  Stroke="Black" Data="M275,410 V430 "/>
+                <Ellipse  x:Name="v_air_prop_center" Stroke="Black" StrokeThickness="2" Height="16" Width="16" Margin="267,402" Fill="LightGray"></Ellipse>
+                <Path  StrokeThickness="1" Fill="White"  Stroke="Black" Data="M240,430 H310 V470 H240 Z "/>
+                <TextBlock x:Name="l_air" Text="0,0 L/min" Foreground="#9090ff" Margin="245,431,0,0"/>
+                <TextBlock x:Name="lr_air" Text="0,0 L/min" Foreground="#B00606" Margin="245,451,0,0"/>
+
+                <!-- Schaum bekämpfung-->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M420,330 V410 H650 V220 H540 V90 H480 V105 "/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M490,405 L500,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M490,415 L500,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M485,95 L480,105"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M475,95 L480,105"/>
+                <!-- Schaum Pumpe-->
+                <Ellipse x:Name="p_foam" Stroke="Black" StrokeThickness="2" Height="30" Width="30" Margin="500,395" Fill="LightGray"></Ellipse>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M510,398 L528,410"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M510,422 L528,410"/>
+
+                <!-- Analyse Luft-->
+                <Path  StrokeThickness="1" Fill="#80ffffff"  Stroke="Black" Data="M340,90 H460 V150 H340 Z "/>
+                <TextBlock x:Name="l_p1" Text="p = 0 mbar" Margin="345,91,0,0"/>
+                <TextBlock x:Name="l_O2" Text="O2 = 0,0 %" Margin="345,111,0,0"/>
+                <TextBlock x:Name="l_H2S" Text="H2S = 0,0 ppm" Margin="345,131,0,0"/>
+
+                <!-- Analyse Medium -->
+                <Path  StrokeThickness="1" Fill="#b0ffffff"  Stroke="Black" Data="M340,200 H460 V300 H340 Z "/>
+                <TextBlock x:Name="l_dO2" Text="dO2 = 0,0 mg/L" Margin="345,201,0,0"/>
+                <TextBlock x:Name="l_Level" Text="V = 0 L" Margin="345,221,0,0"/>
+                <TextBlock x:Name="l_Temp" Text="T = 0,0 °C" Margin="345,241,0,0"/>
+                <TextBlock x:Name="l_pH" Text="pH = 7,0" Margin="345,261,0,0"/>
+                <TextBlock x:Name="l_Eth" Text="Eth = 0,00 g/L" Margin="345,281,0,0"/>
+
+                <!-- Kühlwasser Rücklauf -->
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M750,320 H820 L830,340 L820,360 H750 Z"/>
+                <TextBlock Text="Kühlwasser" Margin="755,321,0,0"/>
+                <TextBlock Text="Rücklauf" Margin="755,341,0,0"/>
+                <!-- Kühlwasser Rücklauf Pipes -->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M492,332 L500,340 H645 A1,1,90,0,1,655,340 H750"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M740,335 L750,340"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M740,345 L750,340"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M510,260 H645 A1,1,90,0,1,655,260 H690 V340 "/>
+
+                <!-- Motor -->
+                <Path x:Name="motor_prop" Fill="LightGray" StrokeThickness="2" Stroke="Black" Data="
+                          M540,295 V315 A20,20,0,0,0,560,325 H600 A20,20,0,0,0,620,315 V275 A20,20,0,0,0,600,265 H560 A20,20,0,0,0,540,275 V295"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M550,270 H610"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M550,280 H610"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M550,290 H610"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M550,300 H610"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M550,310 H610"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M550,320 H610"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M550,265 V325"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M610,265 V325"/>
+                <Path  StrokeThickness="1" Fill="White"  Stroke="Black" Data="M545,330 H615 V370 H545 Z "/>
+                <TextBlock x:Name="l_motor" Text="0,0 U/min" Foreground="#9090ff" Margin="550,331,0,0"/>
+                <TextBlock x:Name="lr_motor" Text="0,0 U/min" Foreground="#B00606" Margin="550,351,0,0"/>
+
+                <!-- Abgas -->
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M750,30 H810 L820,40 L810,50 H750 Z"/>
+                <TextBlock Text="Abgas" Margin="755,31,0,0"/>
+                <!-- Abgas Pipes -->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M450,80 V40 H750"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M740,35 L750,40"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M740,45 L750,40"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M640,35 L650,40"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M640,45 L650,40"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M600,40 V120 H650"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M640,115 L650,120"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M640,125 L650,120"/>
+                <!-- Abgas Ventil -->
+                <Path  StrokeThickness="2" Fill="White"  Stroke="Black" Data="M650,25 V55 L680,25 V55 Z "/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M665,40 V10 "/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M660,30 L670,25 "/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M660,25 L670,20 "/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M660,20 L670,15 "/>
+
+                <!-- Gas Sensor -->
+                <Path x:Name="GasSensor" StrokeThickness="2" Fill="White"  Stroke="Black" Data="M650,105 V135 L660,140 L720,140 L730,135 V105 L720,100 H660 Z"/>
+                <TextBlock Text="Gas Sensor"  Margin="660,111,0,0"/>
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M655,150 H725 V170 H655 Z"/>
+                <TextBlock x:Name="l_gassensor" Text="State = 0" Margin="660,151,0,0"/>
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M735,100 H820 V160 H735 Z"/>
+                <TextBlock x:Name="l_gassensor_Temp" Text="T = 0,0 °C" Margin="740,101,0,0"/>
+                <TextBlock x:Name="l_gassensor_Press" Text="p = 0 mbar" Margin="740,121,0,0"/>
+                <TextBlock x:Name="l_gassensor_Humid" Text="H = 0 %" Margin="740,141,0,0"/>
+
+                <!-- Medium Ablauf -->
+                <Path  StrokeThickness="1" Fill="white" Stroke="Black" Data="M750,520 H820 L830,540 L820,560 H750 Z"/>
+                <TextBlock Text="Medium" Margin="755,521,0,0"/>
+                <TextBlock Text="Ablauf" Margin="755,541,0,0"/>
+                <!-- MEdium Ablauf Pipes -->
+                <Path  StrokeThickness="2" Stroke="Black" Data="M560,410 V540 H750"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M570,405 L580,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M570,415 L580,410"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M570,535 L580,540"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M570,545 L580,540"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M740,535 L750,540"/>
+                <Path  StrokeThickness="1" Stroke="Black" Data="M740,545 L750,540"/>
+                <!-- MEdium Ablauf Ventile -->
+                <Path  StrokeThickness="2" Fill="White"  Stroke="Black" Data="M580,395 V425 L610,395 V425 Z "/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M595,390 V410"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M585,390 H605"/>
+                <Path  StrokeThickness="2" Fill="White"  Stroke="Black" Data="M580,525 V555 L610,525 V555 Z "/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M595,520 V540"/>
+                <Path  StrokeThickness="2" Stroke="Black" Data="M585,520 H605"/>
+
+                <!-- Ventil Label -->
+                <TextBlock Text="A2" Margin="182,40,0,0"/>
+                <TextBlock Text="D5" Margin="182,90,0,0"/>
+                <TextBlock Text="D6" Margin="182,260,0,0"/>
+                <TextBlock Text="D7" Margin="182,340,0,0"/>
+                <TextBlock Text="D2" Margin="182,410,0,0"/>
+                <TextBlock Text="D4, A3" Margin="292,410,0,0"/>
+                <TextBlock Text="D11" Margin="532,410,0,0"/>
+                <TextBlock Text="D9" Margin="622,270,0,0"/>
+                <TextBlock Text="D10" Margin="622,290,0,0"/>
+                <TextBlock Text="A1" Margin="622,310,0,0"/>
+            </Canvas>
+            <local:OutputStatusIndicatorBar Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"/>
+        </Grid>
+    </Border>
+</UserControl>
+

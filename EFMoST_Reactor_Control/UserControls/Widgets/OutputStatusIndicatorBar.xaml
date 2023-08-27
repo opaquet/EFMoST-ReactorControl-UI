@@ -1,0 +1,34 @@
+﻿<UserControl x:Class="UI.UserControls.OutputStatusIndicatorBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:UI.UserControls"
+             mc:Ignorable="d" 
+             d:DesignHeight="40" d:DesignWidth="960">
+    <Border Background="#fafafa" CornerRadius="20">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="1"/>
+        </Border.Effect>
+        <StackPanel Orientation="Horizontal">
+            <TextBlock Text="Digital out:" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[0]}" Grid.Column="5" Grid.Row="10" Margin="5,5,5,5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[1]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[2]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[3]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[4]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[5]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[6]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[7]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[8]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[9]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[10]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="30" DataContext="{Binding DigitalOutIndicators[11]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <TextBlock Text="Analog out:" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <local:DigitalStateIndicator Width="70" DataContext="{Binding AnalogOutValues[0]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="70" DataContext="{Binding AnalogOutValues[1]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="70" DataContext="{Binding AnalogOutValues[2]}" Grid.Column="5" Grid.Row="10" Margin="5"/>
+            <local:DigitalStateIndicator Width="70" DataContext="{Binding AnalogOutValues[3]}" Grid.Column="5" Grid.Row="10" Margin="5"/>           
+        </StackPanel>
+    </Border>
+</UserControl>

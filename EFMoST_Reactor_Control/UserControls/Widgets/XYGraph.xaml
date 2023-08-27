@@ -1,0 +1,24 @@
+﻿<UserControl x:Class="UI.UserControls.XYGraph"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:sp1="clr-namespace:ScottPlot;assembly=ScottPlot.WPF"
+             mc:Ignorable="d" 
+             d:DesignHeight="380" d:DesignWidth="920" >
+    <Border x:Name="OuterBorder" Background="#fafafa" CornerRadius="30" >
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="1"/>
+        </Border.Effect>
+        <Border.OpacityMask>
+            <VisualBrush>
+                <VisualBrush.Visual>
+                    <Border Width="{Binding ActualWidth, ElementName=OuterBorder, Mode=OneWay}" 
+                        Height="{Binding ActualHeight, ElementName=OuterBorder, Mode=OneWay}" 
+                        Background="Black" CornerRadius="20"/>
+                </VisualBrush.Visual>
+            </VisualBrush>
+        </Border.OpacityMask>
+        <sp1:WpfPlot x:Name="XYPlot"/>
+    </Border>
+</UserControl>
