@@ -1,24 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
-namespace UI.UserControls.MainPanels
-{
-    /// <summary>
-    /// Interaktionslogik für MeasurementPanel.xaml
-    /// </summary>
+namespace UI.UserControls.MainPanels {
     public partial class MeasurementPanel : UserControl
     {
         public MeasurementPanel() {
@@ -37,21 +25,22 @@ namespace UI.UserControls.MainPanels
 
         public void Bar_Click(object sender, MouseButtonEventArgs e) {
             Task.Run(() => Console.Beep(2400, 50));
-            string Name = ((ValueDisplayBar)sender).Name;
-            int Index = int.Parse(Name.Substring(1)) - 1;
-            if (Index == XYGraph.SelectedValue) return;
-            XYGraph.SelectedValue = Index;
+            ValueDisplayBar displayBar = (ValueDisplayBar) sender;
+            ButtonAnimation("#202020", "#fafafa", displayBar);
+            string Name = displayBar.Name;
+            int Index = int.Parse(Name[1..]) - 1;
+            if (Index == XYGraph.SelectedValue) { return; }
+            XYGraph.SetSelectedGraph(Index);
             XYGraph.Update(true);
-
         }
 
-        public void ButtonAnimation(string tgtColor, string endColor, Border brd, double duration = 0.2) {
-            brd.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(tgtColor));
-            ColorAnimation animation = new ColorAnimation {
+        public static void ButtonAnimation(string tgtColor, string endColor, ValueDisplayBar brd, double duration = 0.2) {
+            brd.BackgroundColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString(tgtColor));
+            ColorAnimation animation = new() {
                 To = (Color)ColorConverter.ConvertFromString(endColor),
                 Duration = new Duration(TimeSpan.FromSeconds(duration))
             };
-            brd.Background.BeginAnimation(SolidColorBrush.ColorProperty, animation);
+            brd.BackgroundColor.BeginAnimation(SolidColorBrush.ColorProperty, animation);
         }
     }
 }

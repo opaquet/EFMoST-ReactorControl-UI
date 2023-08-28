@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:UI.CommandExtensions"
              mc:Ignorable="d" 
              d:DesignHeight="60" d:DesignWidth="1280">
     <Border Grid.Row="1" Margin="-1" Background="#888" BorderBrush="Black" BorderThickness="1">
@@ -29,7 +28,7 @@
                     </Path>
                 </Canvas>
             </Border>
-            <Border x:Name="GasSensorStatus" Grid.Column="2" CornerRadius="20" Background="{Binding GasSensor.ConnectionStatusColor, FallbackValue=#fafafa}" Margin="10" local:EventToCommandExtensions.MouseDownCommand="{Binding GasSensor.ReconnectDevice}">
+            <Border x:Name="GasSensorStatus" Grid.Column="2" CornerRadius="20" Background="{Binding GasSensor.ConnectionStatusColor, FallbackValue=#fafafa}" Margin="10" MouseDown="GasSensorStatus_MouseDown">
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>
@@ -77,7 +76,7 @@
                 </StackPanel>
             </Border>
 
-            <Border x:Name="ControllerStatus" Grid.Column="3" CornerRadius="20" Background="{Binding Controller.ConnectionStatusColor , FallbackValue=#fafafa}" Margin="10" local:EventToCommandExtensions.MouseDownCommand="{Binding Controller.ReconnectDevice}">
+            <Border x:Name="ControllerStatus" Grid.Column="3" CornerRadius="20" Background="{Binding Controller.ConnectionStatusColor , FallbackValue=#fafafa}" Margin="10" MouseDown="ControllerStatus_MouseDown">
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>

@@ -7,9 +7,6 @@
         xmlns:ViewModel="clr-namespace:ViewModel;assembly=ViewModel"
         mc:Ignorable="d"
         Title="MainWindow" Height="800" Width="1280" WindowState="Normal" WindowStyle="None" Background="#606065">
-    <Window.DataContext>
-        <ViewModel:MainViewModel/>
-    </Window.DataContext>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="1*"/>

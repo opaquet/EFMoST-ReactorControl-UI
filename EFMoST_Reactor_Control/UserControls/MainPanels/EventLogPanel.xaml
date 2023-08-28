@@ -86,7 +86,7 @@
                     <ColumnDefinition Width="4*"/>
                     <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
-                <ComboBox x:Name="port0_sendstr" Grid.Column="0" Margin="5,5,0,5" IsEditable="True" VerticalAlignment="Center" FontSize="14" SelectedIndex="0">
+                <ComboBox x:Name="port1_sendstr" Grid.Column="0" Margin="5,5,0,5" IsEditable="True" VerticalAlignment="Center" FontSize="14" SelectedIndex="0" KeyDown="port1_sendstr_KeyDown">
                     <ComboBoxItem Content="!Rs"/>
                     <ComboBoxItem Content="!GD"/>
                     <ComboBoxItem Content="!CN"/>
@@ -100,7 +100,7 @@
                     <ComboBoxItem Content="!AI"/>
                     <ComboBoxItem Content="!BM(19200)"/>
                 </ComboBox>
-                <Button Grid.Column="1" Content="Send" Command="{Binding Controller.SendCommandToDevice}" CommandParameter="port1_sendstr" Margin="5">
+                <Button Grid.Column="1" Content="Send" Click="Button_Click_1" Margin="5">
                     <Button.Resources>
                         <Style TargetType="{x:Type Border}">
                             <Setter Property="CornerRadius" Value="10"/>
@@ -116,7 +116,7 @@
                     <ColumnDefinition Width="4*"/>
                     <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
-                <ComboBox x:Name="port1_sendstr" Grid.Column="0" Margin="5,5,0,5" IsEditable="True" VerticalAlignment="Center" FontSize="14" SelectedIndex="0">
+                <ComboBox x:Name="port0_sendstr" Grid.Column="0" Margin="5,5,0,5" IsEditable="True" VerticalAlignment="Center" FontSize="14" SelectedIndex="0" KeyDown="port0_sendstr_KeyDown">
                     <ComboBoxItem Content="s,-2"/>
                     <ComboBoxItem Content="r,0,1"/>
                     <ComboBoxItem Content="m,0,0 "/>
@@ -126,7 +126,7 @@
                     <ComboBoxItem Content="t,3,120"/>
                     <ComboBoxItem Content="c,16,23"/>
                 </ComboBox>
-                <Button Grid.Column="1" Content="Send" Command="{Binding GasSensor.SendCommandToDevice}" CommandParameter="port1_sendstr" Margin="5">
+                <Button Grid.Column="1" Content="Send" Click="Button_Click_0" Margin="5">
                     <Button.Resources>
                         <Style TargetType="{x:Type Border}">
                             <Setter Property="CornerRadius" Value="10"/>

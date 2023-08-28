@@ -114,7 +114,7 @@
             <local:DigitalStateIndicator x:Name="Ind_D12" Grid.Row="26" Grid.Column="1" DataContext="{Binding DigitalOutIndicators[11]}" MouseDown="D_Button_Click"/>
             <TextBlock Grid.Row="26" Grid.Column="2" DataContext="{Binding DigitalOutIndicators[11]}" Text="{Binding Information}" VerticalAlignment="center" HorizontalAlignment="Left"  FontSize="10" Padding="5,0,0,0" />
 
-            <Border x:Name="Ind_A1" Grid.Row="4" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[0]}" Background="{Binding IndicatingColor, Mode=OneWay}">
+            <Border x:Name="Ind_A1" Grid.Row="4" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[0]}" Background="{Binding IndicatingColorBool, Mode=OneWay}">
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>
@@ -132,7 +132,7 @@
             </Border>
             <TextBlock Grid.Row="4" Grid.Column="5" DataContext="{Binding AnalogOutValues[0]}" Text="{Binding Information, Mode=OneWay}" VerticalAlignment="center" HorizontalAlignment="Left"  FontSize="10" Padding="5,0,0,0" />
 
-            <Border x:Name="Ind_A2" Grid.Row="6" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[1]}" Background="{Binding IndicatingColor, Mode=OneWay}" >
+            <Border x:Name="Ind_A2" Grid.Row="6" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[1]}" Background="{Binding IndicatingColorBool, Mode=OneWay}" >
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>
@@ -150,7 +150,7 @@
             </Border>
             <TextBlock Grid.Row="6" Grid.Column="5" DataContext="{Binding AnalogOutValues[1]}" Text="{Binding Information, Mode=OneWay}" VerticalAlignment="center" HorizontalAlignment="Left"  FontSize="10" Padding="5,0,0,0" />
 
-            <Border x:Name="Ind_A3" Grid.Row="8" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[2]}" Background="{Binding IndicatingColor, Mode=OneWay}" >
+            <Border x:Name="Ind_A3" Grid.Row="8" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[2]}" Background="{Binding IndicatingColorBool, Mode=OneWay}" >
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>
@@ -168,7 +168,7 @@
             </Border>
             <TextBlock Grid.Row="8" Grid.Column="5" DataContext="{Binding AnalogOutValues[2]}" Text="{Binding Information, Mode=OneWay}" VerticalAlignment="center" HorizontalAlignment="Left"  FontSize="10" Padding="5,0,0,0" />
 
-            <Border x:Name="Ind_A4" Grid.Row="10" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[3]}" Background="{Binding IndicatingColor, Mode=OneWay}" >
+            <Border x:Name="Ind_A4" Grid.Row="10" Grid.Column="4" CornerRadius="15" Margin="2" BorderThickness="0" BorderBrush="Black" DataContext="{Binding AnalogOutValues[3]}" Background="{Binding IndicatingColorBool, Mode=OneWay}" >
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>
@@ -185,8 +185,8 @@
                 </Grid>
             </Border>
             <TextBlock Grid.Row="10" Grid.Column="5" DataContext="{Binding AnalogOutValues[3]}" Text="{Binding Information, Mode=OneWay}" VerticalAlignment="center" HorizontalAlignment="Left"  FontSize="10" Padding="5,0,0,0" />
-            <Border CornerRadius="15" Margin="-5,0,-5,5"  x:Name="BorderCover1" Grid.Column="1" Grid.ColumnSpan="1" Grid.Row="4" Grid.RowSpan="24" Background="#80b0b0b0" DataContext="{Binding IndicatorDirectControl}" Visibility="{Binding isIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
-            <Border Margin="-5,0,-5,5"  x:Name="BorderCover2" Grid.Column="4" Grid.ColumnSpan="1" Grid.Row="4" Grid.RowSpan="8" Background="#80b0b0b0" DataContext="{Binding IndicatorDirectControl}" Visibility="{Binding isIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
+            <Border CornerRadius="15" Margin="-5,0,-5,5"  x:Name="BorderCover1" Grid.Column="1" Grid.ColumnSpan="1" Grid.Row="4" Grid.RowSpan="24" Background="#80b0b0b0" DataContext="{Binding IndicatorDirectControl}" Visibility="{Binding IsIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
+            <Border Margin="-5,0,-5,5"  x:Name="BorderCover2" Grid.Column="4" Grid.ColumnSpan="1" Grid.Row="4" Grid.RowSpan="8" Background="#80b0b0b0" DataContext="{Binding IndicatorDirectControl}" Visibility="{Binding IsIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
         </Grid>
     </Border>
 </UserControl>

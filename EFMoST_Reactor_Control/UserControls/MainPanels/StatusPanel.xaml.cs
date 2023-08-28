@@ -14,7 +14,7 @@ namespace UI.UserControls.MainPanels {
         private CancellationTokenSource cts = new();
         private bool isDisposed = false;
 
-        private bool MotorIsRunning { get => (_VM?.DigitalOutIndicators[8].IsIndicating ?? false) || (_VM?.DigitalOutIndicators[9].IsIndicating ?? false); }
+        private bool MotorIsRunning { get => (_VM?.DigitalOutIndicators?[8].IsIndicating ?? false) || (_VM?.DigitalOutIndicators?[9].IsIndicating ?? false); }
 
         public StatusPanel() {
             InitializeComponent();
@@ -129,15 +129,15 @@ namespace UI.UserControls.MainPanels {
                 l_gassensor_Temp.Text = "T = ?";
                 l_gassensor_Humid.Text = "H = ?";
                 l_gassensor_Press.Text = "pa = ?";
+            } else {
+                l_gassensor.Text = $"State = {_VM.GasSensorStateValue.Value}";
+                l_gassensor_Temp.Text = $"T = {_VM.GasSensorEnviromentValues[0].ValueString} {_VM.GasSensorEnviromentValues[0].Unit}";
+                l_gassensor_Humid.Text = $"H = {_VM.GasSensorEnviromentValues[1].ValueString} {_VM.GasSensorEnviromentValues[1].Unit}";
+                l_gassensor_Press.Text = $"pa = {_VM.GasSensorEnviromentValues[2].ValueString} {_VM.GasSensorEnviromentValues[2].Unit}";
             }
 
-            l_gassensor.Text = $"State = {_VM.GasSensorStateValue.Value}";
-            l_gassensor_Temp.Text = $"T = {_VM.GasSensorEnviromentValues[0].ValueString} {_VM.GasSensorEnviromentValues[0].Unit}";
-            l_gassensor_Humid.Text = $"H = {_VM.GasSensorEnviromentValues[1].ValueString} {_VM.GasSensorEnviromentValues[1].Unit}";
-            l_gassensor_Press.Text = $"pa = {_VM.GasSensorEnviromentValues[2].ValueString} {_VM.GasSensorEnviromentValues[2].Unit}";
-
             l_H2S.Text = $"H2S = {_VM.MeasurementValues[15].ValueString} {_VM.MeasurementValues[15].Unit}";
-            l_Eth.Text = $"Eth = {_VM.MeasurementValues[14].ValueString}  {_VM.MeasurementValues[14].Unit}";
+            l_Eth.Text = $"Eth = {_VM.MeasurementValues[14].ValueString} {_VM.MeasurementValues[14].Unit}";
 
         }
 

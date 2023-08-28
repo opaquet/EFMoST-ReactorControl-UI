@@ -1,18 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace UI.UserControls {
     /// <summary>
@@ -20,10 +13,9 @@ namespace UI.UserControls {
     /// </summary>
     public partial class PanelControl : UserControl {
         private int _selectedTab = 0;
-        private SolidColorBrush _selectedBGColor = new(Color.FromRgb(128, 128, 240));
-        private SolidColorBrush _selectedFontColor = new(Color.FromRgb(255, 255, 255));
-        private LinearGradientBrush _unselectedBGColor = new(Color.FromRgb(192, 192, 192), Color.FromRgb(176, 176, 176), 90);
-        private SolidColorBrush _unselectedFontColor = new(Color.FromRgb(0, 0, 0));
+        private readonly SolidColorBrush _selectedFontColor = new(Color.FromRgb(255, 255, 255));
+        private readonly LinearGradientBrush _unselectedBGColor = new(Color.FromRgb(192, 192, 192), Color.FromRgb(176, 176, 176), 90);
+        private readonly SolidColorBrush _unselectedFontColor = new(Color.FromRgb(0, 0, 0));
         private DropShadowEffect _shadowEffect = new();
         private DropShadowEffect _shadowEffectPressed = new();
         private Border[] _buttons;
@@ -38,7 +30,7 @@ namespace UI.UserControls {
             _shadowEffectPressed.ShadowDepth = 1;
         }
 
-        public void Dispose() {
+        public static void Dispose() {
 
         }
 
@@ -52,15 +44,25 @@ namespace UI.UserControls {
             _panels[_selectedTab].Visibility = Visibility.Collapsed;
 
             if (sender is Border border && !string.IsNullOrEmpty(border.Name)) {
-                _selectedTab = int.Parse(border.Name.Substring(1));
+                _selectedTab = int.Parse(border.Name[1..]);
             }
 
-            _buttons[_selectedTab].Background = _selectedBGColor;
+            ButtonAnimation("#222", "#88f", _buttons[_selectedTab]);
+            //_buttons[_selectedTab].Background = _selectedBGColor;
             _buttons[_selectedTab].Effect = _shadowEffectPressed;
             _buttonLabels[_selectedTab].Foreground = _selectedFontColor;
             _buttonLabels[_selectedTab].FontWeight = FontWeights.Bold;
             _buttonLabels[_selectedTab].Effect = _shadowEffect;
             _panels[_selectedTab].Visibility = Visibility.Visible;
+        }
+
+        public static void ButtonAnimation(string tgtColor, string endColor, Border brd, double duration = 0.4) {
+            brd.Background = new SolidColorBrush((Color) ColorConverter.ConvertFromString(tgtColor));
+            ColorAnimation animation = new() {
+                To = (Color) ColorConverter.ConvertFromString(endColor),
+                Duration = new Duration(TimeSpan.FromSeconds(duration))
+            };
+            brd.Background.BeginAnimation(SolidColorBrush.ColorProperty, animation);
         }
     }
 }

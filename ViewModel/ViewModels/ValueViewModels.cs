@@ -27,8 +27,17 @@ namespace ViewModel.ViewModels {
                 };
             }
         }
+
+        public string IndicatingColorBool {
+            get {
+                return Value switch {
+                    0 => "#fafafa",
+                    _ => "#ff8040"
+                };
+            }
+        }
         public int DecimalPlaces { get; private set; }
-        public bool IsIndicating { get => Value != 0; }
+        public bool IsIndicating { get => Value > 1; }
         public ValueChangeType ChangeType { get; private set; }
         public double ChangeAmount { get; private set; }
         public bool IsChangeAllowed { get; private set; }

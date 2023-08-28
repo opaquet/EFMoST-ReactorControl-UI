@@ -35,8 +35,8 @@ namespace UI.UserControls.MainPanels {
             if (DC == null) { return; }
             PlayBeep();
             ValueViewModel VM = DC.IndicatorDirectControl;
-            VM.SetValue(1);
             DC.Controller.SendCommandToDevice.Execute($"!DR({(DirectControl ? 0 : 1)})\n");
+            VM.SetValue(1);
         }
 
         private void D_Button_Click(object sender, MouseButtonEventArgs e) {
@@ -44,11 +44,11 @@ namespace UI.UserControls.MainPanels {
             if (DC == null) { return; }
             if (!DirectControl) { return; }
             PlayBeep();
-            string Name = ((ValueViewModel)sender).Name;
+            string Name = ((DigitalStateIndicator) sender).Name;
             int i = int.Parse(Name[5..]) - 1;
             ValueViewModel VM = DC.DigitalOutIndicators[i];
-            VM.SetValue(1);
             DC.Controller.SendCommandToDevice.Execute($"!DS(0,{i},{(DC.DigitalOutIndicators[i].IsIndicating ? 0 : 1)})\n");
+            VM.SetValue(1);
         }
 
         private void Slider_DragCompleted(object sender, DragCompletedEventArgs e) {
@@ -59,8 +59,8 @@ namespace UI.UserControls.MainPanels {
             string Name = ((Slider)sender).Name;
             int i = int.Parse(Name[6..]) - 1;
             ValueViewModel VM = DC.AnalogOutValues[i];
-            VM.SetValue(1);
             DC.Controller.SendCommandToDevice.Execute($"!DS(1,{i},{((Slider)sender).Value:F0})\n");
+            VM.SetValue(1);
         }
 
         private void InitializeDataContext() {

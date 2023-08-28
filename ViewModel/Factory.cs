@@ -4,56 +4,53 @@ using Core.Devices;
 using Core.Modules.Interfaces;
 using ViewModel.ViewModels;
 
-namespace ViewModel
-{
+#pragma warning disable CS8602 // Dereferenzierung eines möglichen Nullverweises.
+namespace ViewModel {
     internal static class Factory {
 
         public static Manager CreateManagerInstance() {
             Manager manager = new();
-            manager.Begin();
             return manager;
         }
 
         public static LogStringViewModel CreateLogViewModel(IEventLogger? log) {
-            return (log == null)
-                ? throw new NullReferenceException() 
-                : new(log);
+            return log is null ? throw new NullReferenceException() : new(log);
         }
 
         public static ChartViewModel CreateChartViewModel(Manager? manager, IReadOnlyList<ValueViewModel> measurementViewModels) {
-            if (manager == null) { throw new NullReferenceException(); }
-            ChartViewModel viewModels = new();
-                foreach (var measurement in measurementViewModels) {
-                viewModels.AddSeries(measurement.Name, "h", measurement.Unit, measurement.MinValue, measurement.MaxValue);
+            EnsureNotNull(manager, nameof(manager));
+            ChartViewModel chartViewModel = new();
+            foreach (var measurement in measurementViewModels) {
+                chartViewModel.AddSeries(measurement.Name, "h", measurement.Unit, measurement.MinValue, measurement.MaxValue);
+            }
+            for (int i = 0; i < 6; i++) {
+                chartViewModel.AddSetPointSeries("", "", "");
             }
 
-            
-
             void handler(TControllerData ContollerData) {
+
+                double time = ( DateTime.Now - manager.StartTime ).TotalHours;
                 for (int i = 0; i < 14; i++) {
-                    viewModels.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ContollerData.Values[i] },i);
+                    chartViewModel.AddPoint(new MeasurementPoint { X = time, Y = ContollerData.Values[i] },i);
                     if (i < 6) {
-                        viewModels.AddSetPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ContollerData.Setpoints[i] }, i);
+                        chartViewModel.AddSetPoint(new MeasurementPoint { X = time, Y = ContollerData.Setpoints[i] }, i);
                     }
                 }
             }
-            manager.ControllerDataUpdate += handler;
-            _controllerDataUpdateHandlers.Add(handler);
+            SubscribeToControllerDataUpdate(manager, handler);
 
             void handler3(TComputedValuesData ComputedData) {
-                viewModels.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ComputedData.Ethanol }, 14);
-                viewModels.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ComputedData.H2S }, 15);
+                chartViewModel.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ComputedData.Ethanol }, 14);
+                chartViewModel.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ComputedData.H2S }, 15);
             }
-            manager.ComputedValuesDataUpdate += handler3;
-            _computedDataUpdateHandlers.Add(handler3);
+            SubscribeToComputedDataUpdate(manager, handler3);
 
             void handler2(TGasSensorData GasSensorData) {
-                viewModels.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = GasSensorData.Values.Average() }, 16);
+                chartViewModel.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = GasSensorData.Values.Average() }, 16);
             }
-            manager.GasSensorDataUpdate += handler2;
-            _gasSensorDataUpdateHandlers.Add(handler2);
+            SubscribeToGasSensorDataUpdate(manager, handler2);
 
-            return viewModels;
+            return chartViewModel;
         }
 
         public static DeviceViewModel CreateDeviceViewModel(IDevice? dev, IEventLogger? log) {
@@ -64,29 +61,26 @@ namespace ViewModel
 
 
         public static ValueViewModel CreateIndicatorDirectControlViewModel(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
-            ValueViewModel viewModel = new(name: "Direktsteuerung" , isNameVisible: true, isValueVisible: false);
-            void handler(TControllerData ContollerData) => viewModel.SetValue(ContollerData.DirectControl ? 2 : 0);
-            manager.ControllerDataUpdate += handler;
-            _controllerDataUpdateHandlers.Add(handler);
-            return viewModel;
+            EnsureNotNull(manager, nameof(manager));
+            ValueViewModel valueViewModel = new(name: "Direktsteuerung" , isNameVisible: true, isValueVisible: false);
+            void handler(TControllerData ContollerData) => valueViewModel.SetValue(ContollerData.DirectControl ? 2 : 0);
+            SubscribeToControllerDataUpdate(manager, handler);
+            return valueViewModel;
         }
 
         public static ValueViewModel CreateGasSenoserStatusValueViewModel(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
-            ValueViewModel ValueViewModel = new(name: "GasSensor State");
-            void handler(TGasSensorData GasSensorData) => ValueViewModel.SetValue(GasSensorData.SensorState);
-            manager.GasSensorDataUpdate += handler;
-            _gasSensorDataUpdateHandlers.Add(handler);
-            return ValueViewModel;
+            EnsureNotNull(manager, nameof(manager));
+            ValueViewModel valueViewModel = new(name: "GasSensor State");
+            void handler(TGasSensorData GasSensorData) => valueViewModel.SetValue(GasSensorData.SensorState);
+            SubscribeToGasSensorDataUpdate(manager, handler);
+            return valueViewModel;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateControlSettingValueViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
-            if (manager.reactorControl == null) { throw new NullReferenceException(); }
-            if (manager.settings == null) { throw new NullReferenceException(); }
-            List<ValueViewModel> ValueViewModels = new() {
-
+            EnsureNotNull(manager, nameof(manager));
+            EnsureNotNull(manager?.reactorControl, nameof(manager.reactorControl));
+            EnsureNotNull(manager?.settings, nameof(manager.settings));
+            List<ValueViewModel> valueViewModels = new() {
                 //allgemein
                 new(name:"Temperatur Soll",unit:"°C",maxValue:50, decimalPlaces : 1, 
                     value: manager.settings.ReactorControlSettings.TemperatureMaxValue, changeAllowed:true,
@@ -94,7 +88,6 @@ namespace ViewModel
                 new(name:"Temperatur Max",unit:"°C",maxValue:50, decimalPlaces: 1, 
                     value: manager.settings.ReactorControlSettings.TemperatureSetpoint, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.TemperatureSetpoint = v),
-
                 //feedregelung
                 new(name:"Inkrement",unit:"/h",maxValue:1, decimalPlaces: 2, 
                     value: manager.settings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement, changeAllowed:true,
@@ -105,7 +98,6 @@ namespace ViewModel
                 new(name:"Ausgabe",unit:"/h",maxValue:1, decimalPlaces: 2, 
                     value: manager.reactorControl.CalculatedFeedRateValue, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.reactorControl.SetFeedRate(v)),
-
                 //belüftungsregelung
                 new(name:"dO Sollwert",unit:"mg/L",maxValue:25, decimalPlaces: 1, 
                     value: manager.settings.ReactorControlSettings.VentilationControlSettings.OxygenTargetConcentration, changeAllowed:true,
@@ -121,7 +113,6 @@ namespace ViewModel
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kd = v),
                 new(name:"Ausgabe",unit:"L/min",maxValue:100,decimalPlaces: 1, 
                     value: manager.reactorControl.CalculatedVentilationValue, changeAllowed:false),
-
                 //tempregelung
                 new(name:"kP",unit:"",maxValue:1000, decimalPlaces: 2, 
                     value: manager.settings.ReactorControlSettings.TemperatureControlSettings.PID_kp, changeAllowed:true,
@@ -136,49 +127,34 @@ namespace ViewModel
                     value: manager.reactorControl.CalculatedTempControlSeeting, changeAllowed:false),
                 new(name:"Ventil",unit:"",maxValue : 1, decimalPlaces : 0, 
                     value: manager.reactorControl.CalculatedTempValveSetting ? 1 : 0, changeAllowed:false),
-
                 //drehzahlregelung
                 new(name:"Ausgabe",unit:"U/min",maxValue:500,decimalPlaces: 0, 
                     value: manager.reactorControl.CalculatedRPMValue, changeAllowed:false)
             };
 
             // setup Events to react when the values have been changed by the core logic
-            Action handler = () => { ValueViewModels[0].SetValue(manager.settings.ReactorControlSettings.TemperatureMaxValue); };
-            manager.reactorControl.ControlCycleFinished += handler;
-            ControlCycleUpdateHandlers.Add(handler);
+            Action handler = () => { valueViewModels[0].SetValue(manager.settings.ReactorControlSettings.TemperatureMaxValue); };
+            SubscribeToControlCycleUpdate(manager, handler);
+            handler = () => { valueViewModels[1].SetValue(manager.settings.ReactorControlSettings.TemperatureSetpoint); };
+            SubscribeToControlCycleUpdate(manager, handler);
+            handler = () => { valueViewModels[4].SetValue(manager.reactorControl.CalculatedFeedRateValue); };
+            SubscribeToControlCycleUpdate(manager, handler);
+            handler = () => { valueViewModels[9].SetValue(manager.reactorControl.CalculatedVentilationValue); };
+            SubscribeToControlCycleUpdate(manager, handler);
+            handler = () => { valueViewModels[13].SetValue(manager.reactorControl.CalculatedTempControlSeeting); };
+            SubscribeToControlCycleUpdate(manager, handler);
+            handler = () => { valueViewModels[14].SetValue(manager.reactorControl.CalculatedTempValveSetting ? 1 : 0); };
+            SubscribeToControlCycleUpdate(manager, handler);
+            handler = () => { valueViewModels[15].SetValue(manager.reactorControl.CalculatedRPMValue); };
+            SubscribeToControlCycleUpdate(manager, handler);
 
-            handler = () => { ValueViewModels[1].SetValue(manager.settings.ReactorControlSettings.TemperatureSetpoint); };
-            manager.reactorControl.ControlCycleFinished += handler;
-            ControlCycleUpdateHandlers.Add(handler);
-
-            handler = () => { ValueViewModels[4].SetValue(manager.reactorControl.CalculatedFeedRateValue); };
-            manager.reactorControl.ControlCycleFinished += handler;
-            ControlCycleUpdateHandlers.Add(handler);
-
-            handler = () => { ValueViewModels[9].SetValue(manager.reactorControl.CalculatedVentilationValue); };
-            manager.reactorControl.ControlCycleFinished += handler;
-            ControlCycleUpdateHandlers.Add(handler);
-
-            handler = () => { ValueViewModels[13].SetValue(manager.reactorControl.CalculatedTempControlSeeting); };
-            manager.reactorControl.ControlCycleFinished += handler;
-            ControlCycleUpdateHandlers.Add(handler);
-
-            handler = () => { ValueViewModels[14].SetValue(manager.reactorControl.CalculatedTempValveSetting ? 1 : 0); };
-            manager.reactorControl.ControlCycleFinished += handler;
-            ControlCycleUpdateHandlers.Add(handler);
-
-            handler = () => { ValueViewModels[15].SetValue(manager.reactorControl.CalculatedRPMValue); };
-            manager.reactorControl.ControlCycleFinished += handler;
-            ControlCycleUpdateHandlers.Add(handler);
-
-
-            return ValueViewModels;
+            return valueViewModels;
         }
 
-            public static IReadOnlyList<ValueViewModel> CreateSetPointValueViewModels(Manager? manager) { 
-            if (manager == null) { throw new NullReferenceException(); }
+            public static IReadOnlyList<ValueViewModel> CreateSetPointValueViewModels(Manager? manager) {
+            EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
-            List<ValueViewModel> ValueViewModels = new() {
+            List<ValueViewModel> valueViewModels = new() {
                 new(name:"Füllstand",unit:"L",maxValue:1200),
                 new(name:"Drehzahl",unit:"U/min",maxValue:350),
                 new(name:"Belüftung",unit:"L/min",maxValue:500),
@@ -187,21 +163,18 @@ namespace ViewModel
                 new(name:"Konzentrierung",unit:"%",maxValue:110),
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) {
-                    ValueViewModels[localI].SetValue(ContollerData.Setpoints[localI]);
-                }
-                manager.ControllerDataUpdate += handler;
-                _controllerDataUpdateHandlers.Add(handler);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Setpoints[localI]);
+                SubscribeToControllerDataUpdate(manager, handler);
             }
-            return ValueViewModels;
+            return valueViewModels;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateMeasurementValueViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
+            EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
-            List<ValueViewModel> ValueViewModels = new() {
+            List<ValueViewModel> valueViewModels = new() {
                 new(decimalPlaces : 0, maxValue : 1200,  name : "Füllstand", unit : "L"),
                 new(decimalPlaces : 0, maxValue : 350,   name : "Drehzahl", unit : "U/min"),
                 new(decimalPlaces : 0, maxValue : 500,   name : "Belüftung", unit : "L/min"),
@@ -222,68 +195,62 @@ namespace ViewModel
                 new(decimalPlaces : 0, name : "frei"),
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => ValueViewModels[localI].SetValue(ContollerData.Values[localI]);
-                manager.ControllerDataUpdate += handler;
-                _controllerDataUpdateHandlers.Add(handler);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Values[localI]);
+                SubscribeToControllerDataUpdate(manager, handler);
             }
 
-            void handler2(TComputedValuesData ComputedData) => ValueViewModels[15].SetValue(ComputedData.Ethanol);
-            manager.ComputedValuesDataUpdate += handler2;
-            _computedDataUpdateHandlers.Add(handler2);
+            void handler2(TComputedValuesData ComputedData) => valueViewModels[15].SetValue(ComputedData.Ethanol);
+            SubscribeToComputedDataUpdate(manager, handler2);
 
-            void handler3(TComputedValuesData ComputedData) => ValueViewModels[16].SetValue(ComputedData.H2S);
-            manager.ComputedValuesDataUpdate += handler3;
-            _computedDataUpdateHandlers.Add(handler3);
+            void handler3(TComputedValuesData ComputedData) => valueViewModels[16].SetValue(ComputedData.H2S);
+            SubscribeToComputedDataUpdate(manager, handler3);
 
-            void handler4(TGasSensorData GasSensorData) => ValueViewModels[17].SetValue(GasSensorData.Values.Average());
-            manager.GasSensorDataUpdate += handler4;
-            _gasSensorDataUpdateHandlers.Add(handler4);
+            void handler4(TGasSensorData GasSensorData) => valueViewModels[17].SetValue(GasSensorData.Values.Average());
+            SubscribeToGasSensorDataUpdate(manager, handler4);
 
-            return ValueViewModels;
+            return valueViewModels;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateGasSenoserEnviromentValueViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
-            List<ValueViewModel> ValueViewModels = new() {
+            EnsureNotNull(manager, nameof(manager));
+            List<ValueViewModel> valueViewModels = new() {
                 new(name:"Temperatur",unit:"°C",maxValue:50),
                 new(name:"Luftfeuchte",unit:"%",maxValue:100),
                 new(name:"Druck",unit:"mbar",maxValue:2000),
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TGasSensorData GasSensorData) => ValueViewModels[localI].SetValue(GasSensorData.Enviroment[localI]);
-                manager.GasSensorDataUpdate += handler;
-                _gasSensorDataUpdateHandlers.Add(handler);
+                void handler(TGasSensorData GasSensorData) => valueViewModels[localI].SetValue(GasSensorData.Enviroment[localI]);
+                SubscribeToGasSensorDataUpdate(manager, handler);
             }
-            return ValueViewModels;
+            return valueViewModels;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateAnalogOutValueViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
+            EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
-            List<ValueViewModel> ValueViewModels = new() {
+            List<ValueViewModel> valueViewModels = new() {
                 new(name:"A1",isNameVisible:true,maxValue:4096,decimalPlaces : 0, information:"Rührer/Rotationsfilter Drehzahl"),
                 new(name:"A2",isNameVisible:true,maxValue:4096,decimalPlaces : 0, information:"Dosierpumpe Geschwindigkeit"),
                 new(name:"A3",isNameVisible:true,maxValue:4096,decimalPlaces : 0, information:"Prop-Ventil Belüftung"),
                 new(name:"A4",isNameVisible:true,maxValue:4096,decimalPlaces : 0, information:"Reserve"),
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => ValueViewModels[localI].SetValue(ContollerData.AnalogOut[localI]);
-                manager.ControllerDataUpdate += handler;
-                _controllerDataUpdateHandlers.Add(handler);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.AnalogOut[localI]);
+                SubscribeToControllerDataUpdate(manager, handler);
             }
-            return ValueViewModels;
+            return valueViewModels;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateDigitalOutIndicatorViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
+            EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
-            List<ValueViewModel> ValueViewModels = new() {
+            List<ValueViewModel> valueViewModels = new() {
                 new( name : "D1",  isNameVisible : true, isValueVisible : false, information : "K10: Motorventil"),
                 new( name : "D2",  isNameVisible : true, isValueVisible : false, information : "K11: Magnetventil Belüftung"),
                 new( name : "D3",  isNameVisible : true, isValueVisible : false, information : "K12: Magnetventil Konzentrierung"),
@@ -298,19 +265,18 @@ namespace ViewModel
                 new( name : "D12", isNameVisible : true, isValueVisible : false, information : "K21: Reserve")
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => ValueViewModels[localI].SetValue(ContollerData.DigitalOut[localI] ? 1 : 0);
-                manager.ControllerDataUpdate += handler;
-                _controllerDataUpdateHandlers.Add(handler);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.DigitalOut[localI] ? 2 : 0);
+                SubscribeToControllerDataUpdate(manager, handler);
             }
-            return ValueViewModels;
+            return valueViewModels;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateAutomationIndicatorViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
+            EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
-            List<ValueViewModel> ValueViewModels = new() {
+            List<ValueViewModel> valueViewModels = new() {
                 new(name:"Füllstand", isNameVisible: false, isValueVisible: false),
                 new(name:"Drehzahl", isNameVisible: false, isValueVisible: false),
                 new(name:"Belüftung", isNameVisible: false, isValueVisible: false),
@@ -319,19 +285,18 @@ namespace ViewModel
                 new(name:"Konzentrierung", isNameVisible: false, isValueVisible: false),
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => ValueViewModels[localI].SetValue(ContollerData.Automatic[localI] ? 1 : 0);
-                manager.ControllerDataUpdate += handler;
-                _controllerDataUpdateHandlers.Add(handler);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Automatic[localI] ? 1 : 0);
+                SubscribeToControllerDataUpdate(manager, handler);
             }
-            return ValueViewModels;
+            return valueViewModels;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateControlActiveIndicatorViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
+            EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
-            List<ValueViewModel> ValueViewModels = new() {
+            List<ValueViewModel> valueViewModels = new() {
                 new(name:"C", isNameVisible:true, isValueVisible:false),
                 new(name:"C", isNameVisible:true, isValueVisible:false),
                 new(name:"C", isNameVisible:true, isValueVisible:false),
@@ -340,19 +305,18 @@ namespace ViewModel
                 new(name:"C", isNameVisible:true, isValueVisible:false),
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => ValueViewModels[localI].SetValue(ContollerData.Active[localI] ? 1 : 0);
-                manager.ControllerDataUpdate += handler;
-                _controllerDataUpdateHandlers.Add(handler);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Active[localI] ? 1 : 0);
+                SubscribeToControllerDataUpdate(manager, handler);
             }
-            return ValueViewModels;
+            return valueViewModels;
         }
 
         public static IReadOnlyList<ValueViewModel> CreateAlarmIndicatorViewModels(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
+            EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
-            List<ValueViewModel> ValueViewModels = new() {
+            List<ValueViewModel> valueViewModels = new() {
                 new(name:"A", isNameVisible:true, isValueVisible:false),
                 new(name:"A", isNameVisible:true, isValueVisible:false),
                 new(name:"A", isNameVisible:true, isValueVisible:false),
@@ -361,33 +325,46 @@ namespace ViewModel
                 new(name:"A", isNameVisible:true, isValueVisible:false),
             };
             // setup update Events
-            for (int i = 0; i < ValueViewModels.Count; i++) {
+            for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => ValueViewModels[localI].SetValue(ContollerData.Alarm[localI] ? 1 : 0);
-                manager.ControllerDataUpdate += handler;
-                _controllerDataUpdateHandlers.Add(handler);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Alarm[localI] ? 1 : 0);
+                SubscribeToControllerDataUpdate(manager, handler);
             }
-            return ValueViewModels;
+            return valueViewModels;
         }
 
 
-        public static void UnsubscribeFromAllEvents(Manager? manager) {
-            if (manager == null) { throw new NullReferenceException(); }
-            if (manager.dataStore == null) { throw new NullReferenceException(); }
-            if (manager.reactorControl == null) { throw new NullReferenceException(); }
+        private static void SubscribeToControllerDataUpdate(Manager? manager, Action<TControllerData> handler) {
+            manager.ControllerDataUpdate += handler;
+            _controllerDataUpdateHandlers.Add(handler);
+        }
 
-            foreach (var handler in _controllerDataUpdateHandlers) {
-                manager.ControllerDataUpdate -= handler;
-            }
-            foreach (var handler in _computedDataUpdateHandlers) {
-                manager.dataStore.GasSensorCycleComplete -= handler;
-            }
-            foreach (var handler in _gasSensorDataUpdateHandlers) {
-                manager.GasSensorDataUpdate -= handler;
-            }
-            foreach (var handler in ControlCycleUpdateHandlers) {
-                manager.reactorControl.ControlCycleFinished -= handler;
-            }
+        private static void SubscribeToControlCycleUpdate(Manager? manager, Action handler) {
+            manager.reactorControl.ControlCycleFinished += handler;
+            _controlCycleUpdateHandlers.Add(handler);
+        }
+        private static void SubscribeToGasSensorDataUpdate(Manager? manager, Action<TGasSensorData> handler) {
+            manager.GasSensorDataUpdate += handler;
+            _gasSensorDataUpdateHandlers.Add(handler);
+        }
+        private static void SubscribeToComputedDataUpdate(Manager? manager, Action<TComputedValuesData> handler) {
+            manager.ComputedValuesDataUpdate += handler;
+            _computedDataUpdateHandlers.Add(handler);
+        }
+
+        public static void UnsubscribeFromAllEvents(Manager? manager) {
+            EnsureNotNull(manager, nameof(manager));
+            EnsureNotNull(manager?.dataStore, nameof(manager.dataStore));
+            EnsureNotNull(manager?.reactorControl, nameof(manager.reactorControl));
+
+            _controllerDataUpdateHandlers.ForEach((handler) => manager.ControllerDataUpdate -= handler);
+            _computedDataUpdateHandlers.ForEach((handler) => manager.dataStore.GasSensorCycleComplete -= handler);
+            _gasSensorDataUpdateHandlers.ForEach((handler) => manager.GasSensorDataUpdate -= handler);
+            _controlCycleUpdateHandlers.ForEach((handler) => manager.reactorControl.ControlCycleFinished -= handler);
+        }
+
+        private static void EnsureNotNull(object? value, string name) {
+            if (value == null) { throw new ArgumentNullException(name, $"{name} cannot be null."); }
         }
 
 
@@ -395,6 +372,7 @@ namespace ViewModel
         private static List<Action<TControllerData>> _controllerDataUpdateHandlers = new();
         private static List<Action<TComputedValuesData>> _computedDataUpdateHandlers = new();
         private static List<Action<TGasSensorData>> _gasSensorDataUpdateHandlers = new();
-        private static List<Action> ControlCycleUpdateHandlers = new();
+        private static List<Action> _controlCycleUpdateHandlers = new();
     }
+    #pragma warning restore CS8602 // Dereferenzierung eines möglichen Nullverweises.
 }

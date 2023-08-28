@@ -5,14 +5,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:converter="clr-namespace:UI.Converter"
              mc:Ignorable="d" 
-                          d:DesignHeight="30" d:DesignWidth="300">
+             d:DesignHeight="30" d:DesignWidth="300">
 
     <UserControl.Resources>
         <converter:RoundingConverterN1 x:Key="RoundingConverter"/>
     </UserControl.Resources>
 
 
-    <Border Margin="1" CornerRadius="15" Background="#FFFAFAFA">
+    <Border Margin="1" CornerRadius="15" Background="{Binding BGColor, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, FallbackValue=#fafafa}">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="110"/>
@@ -33,10 +33,24 @@
                 <Grid x:Name="MyGrid" Grid.Column="1" Background="#FFE6E6E6">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="1*"/>
-                        <RowDefinition Height="{Binding SetPointBarHeight, Mode=OneWay}"/>
+                        <RowDefinition Height="{Binding SetPointBarHeight, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     </Grid.RowDefinitions>
-                    <ProgressBar Grid.Row="0" VerticalAlignment="Stretch" Foreground="#FF9090FF" BorderBrush="#00000000" Value="{Binding Value, Mode=OneWay}" Maximum="{Binding Maximum, Mode=OneTime}" Minimum="{Binding Minimum, Mode=OneTime}"/>
-                    <ProgressBar Grid.Row="1" VerticalAlignment="Stretch" Foreground="#FFB00606" BorderBrush="#00000000" Value="{Binding Setpoint, Mode=OneWay}" Maximum="{Binding Maximum, Mode=OneTime}" Minimum="{Binding Minimum, Mode=OneTime}"/>
+                    <ProgressBar 
+                        Grid.Row="0" 
+                        VerticalAlignment="Stretch" 
+                        Foreground="#FF9090FF" 
+                        BorderBrush="#00000000" 
+                        Value="{Binding Value, Mode=OneWay}" 
+                        Maximum="{Binding MaxValue, Mode=OneTime}" 
+                        Minimum="{Binding MinValue, Mode=OneTime}"/>
+                    <ProgressBar 
+                        Grid.Row="1" 
+                        VerticalAlignment="Stretch" 
+                        Foreground="#FFB00606" 
+                        BorderBrush="#00000000" 
+                        Value="{Binding SetPoint, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                        Maximum="{Binding MaxValue, Mode=OneTime}" 
+                        Minimum="{Binding MinValue, Mode=OneTime}"/>
                 </Grid>
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1" Color="Gray"/>

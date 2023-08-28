@@ -19,16 +19,23 @@ namespace UI.UserControls {
             DataContextChanged += GraphXY_DataContextChanged;
         }
 
+        public void SetSelectedGraph(int index) {
+            if (viewModel == null) { return; }
+            viewModel.MeasurementValues[SelectedValue].PropertyChanged -= DC_PropertyChanged;
+            SelectedValue = index;
+            viewModel.MeasurementValues[SelectedValue].PropertyChanged += DC_PropertyChanged;
+        }
+
         public void Dispose() {
             DataContextChanged -= GraphXY_DataContextChanged;
             if (viewModel == null) { return; }
-            viewModel.PropertyChanged -= DC_PropertyChanged;
+            viewModel.MeasurementValues[SelectedValue].PropertyChanged -= DC_PropertyChanged;
         }
 
         private void GraphXY_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e) {
             viewModel = DataContext as MainViewModel;
             if (viewModel == null) { return; }
-            viewModel.PropertyChanged += DC_PropertyChanged;
+            viewModel.MeasurementValues[SelectedValue].PropertyChanged += DC_PropertyChanged;
         }
 
         private void DC_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
@@ -48,9 +55,7 @@ namespace UI.UserControls {
                 }
             }
 
-            if (!skipCheck && punkteAnzahl == xvals.Length) {
-                return;
-            }
+            if (!skipCheck && punkteAnzahl == xvals.Length) { return; }
 
             double[] yvals = viewModel.Chart.ValuesCollection[SelectedValue].YValues;
 

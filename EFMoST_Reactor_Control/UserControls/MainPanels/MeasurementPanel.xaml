@@ -54,12 +54,12 @@
 
             <!-- Messwert Anzeige-->
             <!-- erste spalte-->
-            <local:ValueDisplayBar x:Name="v1" DataContext="{Binding MeasurementValues[0]}" Grid.Column="1" Grid.Row="2" MouseDown="Bar_Click"/>
-            <local:ValueDisplayBar x:Name="v2" DataContext="{Binding MeasurementValues[1]}" Grid.Column="1" Grid.Row="4" MouseDown="Bar_Click"/>
-            <local:ValueDisplayBar x:Name="v3" DataContext="{Binding MeasurementValues[2]}" Grid.Column="1" Grid.Row="6" MouseDown="Bar_Click"/>
-            <local:ValueDisplayBar x:Name="v4" DataContext="{Binding MeasurementValues[3]}" Grid.Column="1" Grid.Row="8" MouseDown="Bar_Click"/>
-            <local:ValueDisplayBar x:Name="v5" DataContext="{Binding MeasurementValues[4]}" Grid.Column="1" Grid.Row="10" MouseDown="Bar_Click"/>
-            <local:ValueDisplayBar x:Name="v6" DataContext="{Binding MeasurementValues[5]}" Grid.Column="1" Grid.Row="12" MouseDown="Bar_Click"/>
+            <local:ValueDisplayBar x:Name="v1" DataContext="{Binding MeasurementValues[0]}" Grid.Column="1" Grid.Row="2" MouseDown="Bar_Click" SetPoint="{Binding DataContext.SetPointValues[0].Value, RelativeSource={RelativeSource AncestorType=Window}}"  SetPointBarHeight="7"/>
+            <local:ValueDisplayBar x:Name="v2" DataContext="{Binding MeasurementValues[1]}" Grid.Column="1" Grid.Row="4" MouseDown="Bar_Click" SetPoint="{Binding DataContext.SetPointValues[1].Value, RelativeSource={RelativeSource AncestorType=Window}}"  SetPointBarHeight="7"/>
+            <local:ValueDisplayBar x:Name="v3" DataContext="{Binding MeasurementValues[2]}" Grid.Column="1" Grid.Row="6" MouseDown="Bar_Click" SetPoint="{Binding DataContext.SetPointValues[2].Value, RelativeSource={RelativeSource AncestorType=Window}}"  SetPointBarHeight="7"/>
+            <local:ValueDisplayBar x:Name="v4" DataContext="{Binding MeasurementValues[3]}" Grid.Column="1" Grid.Row="8" MouseDown="Bar_Click" SetPoint="{Binding DataContext.SetPointValues[3].Value, RelativeSource={RelativeSource AncestorType=Window}}"  SetPointBarHeight="7"/>
+            <local:ValueDisplayBar x:Name="v5" DataContext="{Binding MeasurementValues[4]}" Grid.Column="1" Grid.Row="10" MouseDown="Bar_Click" SetPoint="{Binding DataContext.SetPointValues[4].Value, RelativeSource={RelativeSource AncestorType=Window}}"  SetPointBarHeight="7"/>
+            <local:ValueDisplayBar x:Name="v6" DataContext="{Binding MeasurementValues[5]}" Grid.Column="1" Grid.Row="12" MouseDown="Bar_Click" SetPoint="{Binding DataContext.SetPointValues[5].Value, RelativeSource={RelativeSource AncestorType=Window}}"  SetPointBarHeight="7"/>
 
             <!-- zweite spalte-->
             <local:ValueDisplayBar x:Name="v7" DataContext="{Binding MeasurementValues[6]}" Grid.Column="7" Grid.Row="2" MouseDown="Bar_Click"/>

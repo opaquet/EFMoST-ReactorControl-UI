@@ -1,4 +1,5 @@
 ﻿using Core.DataTypes;
+using System.Security.Cryptography;
 using ViewModel.ViewModels;
 
 namespace ViewModel
@@ -6,29 +7,41 @@ namespace ViewModel
 
     public class MainViewModel : BaseViewModel, IDisposable {
 
+
+        public event Action<double, string, string>? InitProgress;
+        public event Action<string>? InitProgressInc;
+
         private Core.Manager? _coreManger;
         public ProcessControlDataSource AutomaticControlDataSource { get; set; } = ProcessControlDataSource.Measurement;
-        public DeviceViewModel GasSensor { get; private set; }
-        public ValueViewModel GasSensorStateValue { get; private set; }
-        public DeviceViewModel Controller { get; private set; }
+        public DeviceViewModel? GasSensor { get; private set; }
+        public ValueViewModel? GasSensorStateValue { get; private set; }
+        public DeviceViewModel? Controller { get; private set; }
+        public IReadOnlyList<ValueViewModel>? MeasurementValues { get; private set; }
+        public IReadOnlyList<ValueViewModel>? SetPointValues { get; private set; }
+        public IReadOnlyList<ValueViewModel>? AnalogOutValues { get; private set; }
+        public IReadOnlyList<ValueViewModel>? GasSensorEnviromentValues { get; private set; }
+        public IReadOnlyList<ValueViewModel>? DigitalOutIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel>? AutomaticIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel>? ControlActiveIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel>? AlarmIndicators { get; private set; }
+        public IReadOnlyList<ValueViewModel>? ControlSettingValues { get; private set; }
+        public ChartViewModel? Chart { get; private set; }
+        public ValueViewModel? IndicatorDirectControl { get; private set; }
 
-        public IReadOnlyList<ValueViewModel> MeasurementValues { get; private set; }
-        public IReadOnlyList<ValueViewModel> SetPointValues { get; private set; }
-        public IReadOnlyList<ValueViewModel> AnalogOutValues { get; private set; }
-        public IReadOnlyList<ValueViewModel> GasSensorEnviromentValues { get; private set; }
-        public IReadOnlyList<ValueViewModel> DigitalOutIndicators { get; private set; }
-        public IReadOnlyList<ValueViewModel> AutomaticIndicators { get; private set; }
-        public IReadOnlyList<ValueViewModel> ControlActiveIndicators { get; private set; }
-        public IReadOnlyList<ValueViewModel> AlarmIndicators { get; private set; }
-        public IReadOnlyList<ValueViewModel> ControlSettingValues { get; private set; }
-        public ChartViewModel Chart { get; private set; }
-        public ValueViewModel IndicatorDirectControl { get; private set; }
-
-        public LogStringViewModel ApplicationLog { get; private set; }
+        public LogStringViewModel? ApplicationLog { get; private set; }
 
         public MainViewModel() {
             // create the manager instance from the core program logic first
             _coreManger = Factory.CreateManagerInstance();
+            _coreManger.InitializationProgress += (d,s1,s2) => InitProgress?.Invoke(d,s1,s2);
+            _coreManger.InitializationIncProgress += (s1) => InitProgressInc?.Invoke(s1);
+        }
+
+        public async Task InitializeAsync() {
+            // this might take a while
+            await Task.Run(() => 
+                _coreManger?.Begin()
+            );
 
             // now creat sub ViewModels
             ApplicationLog = Factory.CreateLogViewModel(_coreManger.appEventLog);
@@ -56,6 +69,10 @@ namespace ViewModel
 
         public override void Dispose() {
             Factory.UnsubscribeFromAllEvents(_coreManger);
+
+            _coreManger.InitializationProgress -= InitProgress;
+            _coreManger.InitializationIncProgress -= InitProgressInc;
+
             GasSensor?.Dispose();
             Controller?.Dispose();
 

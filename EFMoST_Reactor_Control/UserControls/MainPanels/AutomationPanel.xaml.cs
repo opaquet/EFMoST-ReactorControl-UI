@@ -5,12 +5,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using ViewModel;
 
 namespace UI.UserControls.MainPanels {
-    /// <summary>
-    /// Interaktionslogik für AutomationPanel.xaml
-    /// </summary>
     public partial class AutomationPanel : UserControl
     {
         private MainViewModel? appViewModel;
@@ -45,14 +43,15 @@ namespace UI.UserControls.MainPanels {
             }
         }
 
-        public void Dispose() {
+        public static void Dispose() {
 
         }
 
         private void Border_MouseDown_Messung(object sender, MouseButtonEventArgs e) {
             if (appViewModel == null) { return; }
             PlayBeep();
-            BtnMessung.Background = new SolidColorBrush(Color.FromRgb(255, 128, 64));
+            //BtnMessung.Background = new SolidColorBrush(Color.FromRgb(255, 128, 64));
+            ButtonAnimation("#222", "#f84", BtnMessung);
             BtnSimulation.Background = new SolidColorBrush(Color.FromRgb(192, 192, 192));
             BtnMessungShadow.ShadowDepth = 0;
             BtnSimualtionShadow.ShadowDepth = 4;
@@ -63,14 +62,24 @@ namespace UI.UserControls.MainPanels {
             if (appViewModel == null) { return; }
             PlayBeep();
             BtnMessung.Background = new SolidColorBrush(Color.FromRgb(192, 192, 192));
-            BtnSimulation.Background = new SolidColorBrush(Color.FromRgb(255, 128, 64));
+            ButtonAnimation("#222", "#f84", BtnSimulation);
+            //BtnSimulation.Background = new SolidColorBrush(Color.FromRgb(255, 128, 64));
             BtnMessungShadow.ShadowDepth = 4;
             BtnSimualtionShadow.ShadowDepth = 0;
             appViewModel.AutomaticControlDataSource = ProcessControlDataSource.Simulation;
         }
 
-        private void PlayBeep() {
+        private static void PlayBeep() {
             Task.Run(() => Console.Beep(2400, 50));
+        }
+
+        public static void ButtonAnimation(string tgtColor, string endColor, Border brd, double duration = 0.2) {
+            brd.Background = new SolidColorBrush((Color) ColorConverter.ConvertFromString(tgtColor));
+            ColorAnimation animation = new() {
+                To = (Color) ColorConverter.ConvertFromString(endColor),
+                Duration = new Duration(TimeSpan.FromSeconds(duration))
+            };
+            brd.Background.BeginAnimation(SolidColorBrush.ColorProperty, animation);
         }
     }
 }

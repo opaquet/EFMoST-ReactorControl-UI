@@ -5,11 +5,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using ViewModel;
 
 namespace UI.UserControls {
-    /// <summary>
-    /// Interaktionslogik für StatusBar.xaml
-    /// </summary>
+
     public partial class StatusBar : UserControl {
         private CancellationTokenSource cts = new();
         private bool isDisposed = false;
@@ -55,8 +54,21 @@ namespace UI.UserControls {
         }
 
         private void CloseButton_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
-            Task.Run(() => Console.Beep(1800, 50));
             Window.GetWindow(this).Close();
+        }
+
+        private void GasSensorStatus_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
+            Task.Run(() => Console.Beep(2400, 50));
+            RXTXButtonAnimation("#222", "#f44", (Border)sender);
+            MainViewModel DC = (MainViewModel) DataContext;
+            DC.GasSensor.ReconnectDevice.Execute(null);
+        }
+
+        private void ControllerStatus_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
+            Task.Run(() => Console.Beep(2400, 50));
+            RXTXButtonAnimation("#222", "#f44", (Border) sender);
+            MainViewModel DC = (MainViewModel) DataContext;
+            DC.Controller.ReconnectDevice.Execute(null);
         }
     }
 }
