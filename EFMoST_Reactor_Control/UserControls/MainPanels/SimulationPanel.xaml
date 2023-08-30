@@ -3,9 +3,104 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:sp="clr-namespace:ScottPlot;assembly=ScottPlot.WPF"
+             xmlns:local="clr-namespace:UI.UserControls"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-            
-    </Grid>
+             d:DesignHeight="700" d:DesignWidth="960">
+    <Border x:Name="Panel" Visibility="Visible" BorderThickness="0" Grid.Column="2" Margin="10" Grid.ColumnSpan="2" CornerRadius="30" Background="#b0b0b0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="10"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="10"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Prozesssimulation" HorizontalAlignment="Center" Margin="0" VerticalAlignment="Top" Grid.ColumnSpan="5" Padding="0" FontSize="28" FontWeight="Black" Foreground="White">
+                <TextBlock.Effect>
+                    <DropShadowEffect/>
+                </TextBlock.Effect>
+            </TextBlock>
+
+            <Border Background="#fafafa" CornerRadius="30" Grid.Column="1" Grid.RowSpan="3" Grid.Row="1" >
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="1"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="40"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="100"/>
+                        <RowDefinition Height="100"/>
+                        <RowDefinition Height="100"/>
+                        <RowDefinition Height="10"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="10"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Simulation:" FontSize="16" Grid.Row="0" VerticalAlignment="Center" Grid.Column="1" Grid.ColumnSpan="3"/>
+
+
+                    <local:UpDownButton Grid.Column="1" Grid.Row="8" />
+                    <local:UpDownButton Grid.Column="3" Grid.Row="8" />
+                    <local:UpDownButton Grid.Column="1" Grid.Row="9" />
+                    <local:UpDownButton Grid.Column="3" Grid.Row="9" />
+                    <local:UpDownButton Grid.Column="1" Grid.Row="10" />
+                    <local:UpDownButton Grid.Column="3" Grid.Row="10" />
+
+                </Grid>
+            </Border>
+
+            <Border x:Name="OuterBorder1" Background="#fafafa" CornerRadius="30" Grid.Column="3" Grid.Row="1">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="1"/>
+                </Border.Effect>
+                <Border.OpacityMask>
+                    <VisualBrush>
+                        <VisualBrush.Visual>
+                            <Border Width="{Binding ActualWidth, ElementName=OuterBorder1, Mode=OneWay}" 
+                                    Height="{Binding ActualHeight, ElementName=OuterBorder1, Mode=OneWay}" 
+                                    Background="Black" CornerRadius="20"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <sp:WpfPlot x:Name="XYPlot1"/>
+            </Border>
+            <Border x:Name="OuterBorder2" Background="#fafafa" CornerRadius="30" Grid.Column="3" Grid.Row="3">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="1"/>
+                </Border.Effect>
+                <Border.OpacityMask>
+                    <VisualBrush>
+                        <VisualBrush.Visual>
+                            <Border Width="{Binding ActualWidth, ElementName=OuterBorder2, Mode=OneWay}" 
+                                    Height="{Binding ActualHeight, ElementName=OuterBorder2, Mode=OneWay}" 
+                                    Background="Black" CornerRadius="20"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <sp:WpfPlot x:Name="XYPlot2"/>
+            </Border>
+        </Grid>
+
+
+    </Border>
 </UserControl>

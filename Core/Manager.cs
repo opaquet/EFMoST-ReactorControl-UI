@@ -35,14 +35,15 @@ namespace Core
             InitializeSettingsModule(15);
             InitializeDataStorModule(30);
             InitializeDeviceHandlerModule(45);
+            // wait for devices to finish their connection attempts (not important if sucessful or not)
+            while (( !devHandler?.IsConnectionAttemptFinished[0] ?? false ) && ( !devHandler?.IsConnectionAttemptFinished[1] ?? false )) {
+                Thread.Sleep(100);
+            }
             InitializeReactorControlModule(60);
             InitializeProcessSimulationModule(75);
 
 
-            // wait for devices to finish their connection attempts (not important if sucessful or not)
-            while ((!devHandler?.IsConnectionAttemptFinished[0] ?? false) && (!devHandler?.IsConnectionAttemptFinished[1] ?? false)) {
-                Thread.Sleep(100);
-            }
+
 
             // just in case any ComPort was changed by the autodetection performed by the devHandler  
             settings?.SaveSettings();
@@ -74,14 +75,14 @@ namespace Core
         }
         private void InitializeReactorControlModule(int progress) {
             InitializationProgress?.Invoke(progress, "Starting ControlModule...", "");
-            reactorControl = Factory.CreateReactorControl(settings?.ReactorControlSettings, devHandler?.Devices[0], dataStore);
+            reactorControl = Factory.CreateReactorControl(settings?.ReactorControlSettings, devHandler?.Devices[1], dataStore);
             reactorControl.LogEvent += (msg, logLevel) => appEventLog?.Append(msg, " ControlModule", logLevel);
             reactorControl.StartupEvent += InitializationIncProgress;
             reactorControl.Begin();
         }
         private void InitializeProcessSimulationModule(int progress) {
             InitializationProgress?.Invoke(progress, "Starting SimModule...", "");
-            processSimulator = Factory.CreateProcessSimulation();
+            processSimulator = Factory.CreateProcessSimulation(settings, dataStore);
             processSimulator.LogEvent += (msg, logLevel) => appEventLog?.Append(msg, " SimModule", logLevel);
             processSimulator.StartupEvent += InitializationIncProgress;
             processSimulator.Begin();

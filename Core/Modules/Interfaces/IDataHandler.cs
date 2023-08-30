@@ -34,9 +34,9 @@ namespace Core.Modules.Interfaces
         TGasSensorData GetLastGasSensorDatum();
         void Begin();
         void SaveAllDataJson(string filename);
-        void SaveRelayDataCSV(string filename);
-        void SaveGasSensorDataCSV(string filename);
-        void SaveControllerDataCSV(string filename);
-        void SaveComputedDataCSV(string filename);
+        void SaveRelayDataCSV();
+        void SaveGasSensorDataCSV();
+        void SaveControllerDataCSV();
+        void SaveComputedDataCSV();
     }
 }

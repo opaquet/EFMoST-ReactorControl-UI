@@ -35,14 +35,15 @@
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="10"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Automatische Feedregelung:" FontSize="16" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5"></TextBlock>
+            <TextBlock Text="Automatische Feedregelung:" FontSize="16" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5"/>
             <local:DigitalStateIndicator Grid.Row="1" Grid.Column="7" DataContext="{Binding AutomaticIndicators[3]}" HorizontalAlignment="Right" VerticalAlignment="Center" Width="25" Height="25"/>
             <local:UpDownButton Grid.Row="3" Grid.Column="1" DataContext="{Binding ControlSettingValues[0]}"/>
-            <local:UpDownButton Grid.Row="3" Grid.Column="3" DataContext="{Binding ControlSettingValues[3]}"/>
-            <local:UpDownButton Grid.Row="3" Grid.Column="5" DataContext="{Binding ControlSettingValues[2]}"/>
+            <local:UpDownButton Grid.Row="3" Grid.Column="3" DataContext="{Binding ControlSettingValues[1]}"/>
+            <local:UpDownButton Grid.Row="3" Grid.Column="5" DataContext="{Binding ControlSettingValues[3]}"/>
+            <local:UpDownButton Grid.Row="3" Grid.Column="7" DataContext="{Binding ControlSettingValues[2]}"/>
             <local:UpDownButton Grid.Row="5" Grid.Column="7" DataContext="{Binding ControlSettingValues[4]}"/>
 
-            <Border CornerRadius="15" x:Name="BorderCover1" Grid.Column="1" Grid.ColumnSpan="7" Grid.Row="3" Grid.RowSpan="3" Background="#80fafafa" DataContext="{Binding IndicatorAutomation[3]}" Visibility="{Binding isIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
+            <Border CornerRadius="15" x:Name="BorderCover1" Grid.Column="1" Grid.ColumnSpan="7" Grid.Row="3" Grid.RowSpan="3" Background="#80fafafa" DataContext="{Binding AutomaticIndicators[3]}" Visibility="{Binding IsIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
 
 
         </Grid>

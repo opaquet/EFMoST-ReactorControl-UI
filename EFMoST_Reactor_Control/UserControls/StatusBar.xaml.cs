@@ -59,14 +59,14 @@ namespace UI.UserControls {
 
         private void GasSensorStatus_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
             Task.Run(() => Console.Beep(2400, 50));
-            RXTXButtonAnimation("#222", "#f44", (Border)sender);
+            //RXTXButtonAnimation("#222", "#f44", (Border)sender);
             MainViewModel DC = (MainViewModel) DataContext;
             DC.GasSensor.ReconnectDevice.Execute(null);
         }
 
         private void ControllerStatus_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
             Task.Run(() => Console.Beep(2400, 50));
-            RXTXButtonAnimation("#222", "#f44", (Border) sender);
+            //RXTXButtonAnimation("#222", "#f44", (Border) sender);
             MainViewModel DC = (MainViewModel) DataContext;
             DC.Controller.ReconnectDevice.Execute(null);
         }

@@ -1,17 +1,35 @@
-﻿namespace Core.Modules.Interfaces {
-    public interface IFileWriter : IDisposable
-    {
+﻿using System.Text;
+
+namespace Core.Modules.Interfaces {
+
+    public enum FileWriterMode {
+        Append,
+        Replace
+    }
+
+    public interface IFileWriter : IDisposable {
+        public string FileName { get; }
+        public FileWriterMode Mode { get; }
+
         void WriteLine(string line);
+
+        void WriteLines(string[] lines);
+
+        void WriteLines(StringBuilder lines);
     }
 
     public abstract class FileWriter
     {
         protected string _filepath = "";
 
+        public string FileName { get => _filepath; }
+        public FileWriterMode Mode { get; private set; }
+
         public abstract void Dispose();
 
-        public FileWriter(string filename)
-        {
+        public FileWriter(string filename, FileWriterMode mode = FileWriterMode.Append)  {
+            Mode = mode;
+
             _filepath = filename;
             string directoryName = Path.GetDirectoryName(filename) ?? string.Empty;
             string FileName = Path.GetFileNameWithoutExtension(filename);

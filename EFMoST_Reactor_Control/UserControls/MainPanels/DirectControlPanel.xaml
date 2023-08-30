@@ -10,16 +10,7 @@
     <UserControl.Resources>
         <converter:BoolInvertedToVisibility x:Key="BoolToVisibility"/>
     </UserControl.Resources>
-    <Border x:Name="Panel" Visibility="Visible" BorderThickness="0" Grid.Column="2" Margin="10" Grid.ColumnSpan="2" CornerRadius="30">
-        <Border.Background>
-            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                <GradientStop Color="#B0B0B0"/>
-                <GradientStop Color="#B0B0B0" Offset="1"/>
-            </LinearGradientBrush>
-        </Border.Background>
-
-
-
+    <Border x:Name="Panel" Visibility="Visible" BorderThickness="0" Grid.Column="2" Margin="10" Grid.ColumnSpan="2" CornerRadius="30" Background="#B0B0B0">
         <Grid Grid.Row="1" Grid.Column="1" >
             <Grid.RowDefinitions>
                 <RowDefinition Height="40"/>

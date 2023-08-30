@@ -60,7 +60,7 @@
                             Width="2" Height="2" Canvas.Left="35" Canvas.Top="21" />
                     </Canvas>
                     <TextBlock Text="GasSensor:" VerticalAlignment="Center" Margin="60,0,0,0" Width="60"/>
-                    <TextBlock x:Name="LabelGasSensorStatus" Text="{Binding GasSensor.ConnectionStatus, FallbackValue=Nicht Verbunden!}" VerticalAlignment="Center" Margin="0,0,0,0" Width="92"/>
+                    <TextBlock x:Name="LabelGasSensorStatus" Text="{Binding GasSensor.ConnectionStatus}" VerticalAlignment="Center" Margin="0,0,0,0" Width="92"/>
                     <Border x:Name="TXGasSensorIndicator" Background="LightGray" CornerRadius="15" Margin="10,0,0,0" Height="25" Width="25" >
                         <Border.Effect>
                             <DropShadowEffect ShadowDepth="1"/>
@@ -76,7 +76,7 @@
                 </StackPanel>
             </Border>
 
-            <Border x:Name="ControllerStatus" Grid.Column="3" CornerRadius="20" Background="{Binding Controller.ConnectionStatusColor , FallbackValue=#fafafa}" Margin="10" MouseDown="ControllerStatus_MouseDown">
+            <Border x:Name="ControllerStatus" Grid.Column="3" CornerRadius="20" Background="{Binding Controller.ConnectionStatusColor, FallbackValue=#fafafa}" Margin="10" MouseDown="ControllerStatus_MouseDown">
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>
@@ -167,7 +167,7 @@
 
                     </Canvas>
                     <TextBlock Text="Controller:" VerticalAlignment="Center" Margin="60,0,0,0" Width="60"/>
-                    <TextBlock x:Name="LabelControllerStatus" Text="{Binding Controller.ConnectionStatus, FallbackValue=Nicht Verbunden!}" VerticalAlignment="Center" Margin="0,0,0,0" Width="92"/>
+                    <TextBlock x:Name="LabelControllerStatus" Text="{Binding Controller.ConnectionStatus}" VerticalAlignment="Center" Margin="0,0,0,0" Width="92"/>
                     <Border x:Name="TXControllerIndicator" Background="LightGray" CornerRadius="15" Margin="10,0,0,0" Height="25" Width="25" >
                         <Border.Effect>
                             <DropShadowEffect ShadowDepth="1"/>

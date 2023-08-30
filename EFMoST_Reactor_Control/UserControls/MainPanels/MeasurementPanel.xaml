@@ -6,14 +6,7 @@
              xmlns:local="clr-namespace:UI.UserControls"
              mc:Ignorable="d" 
              d:DesignHeight="720" d:DesignWidth="960">
-    <Border x:Name="Panel" Visibility="Visible" Margin="10" CornerRadius="30">
-
-        <Border.Background>
-            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                <GradientStop Color="#B0B0B0"/>
-                <GradientStop Color="#B0B0B0" Offset="1"/>
-            </LinearGradientBrush>
-        </Border.Background>
+    <Border x:Name="Panel" Visibility="Visible" Margin="10" CornerRadius="30" Background="#B0B0B0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="35"/>

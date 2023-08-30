@@ -54,8 +54,9 @@ namespace UI.UserControls {
                     punkteAnzahl = scatter.Xs.Length;
                 }
             }
-
-            if (!skipCheck && punkteAnzahl == xvals.Length) { return; }
+            if (punkteAnzahl != 2000) {
+                if (!skipCheck && punkteAnzahl == xvals.Length) { return; }
+            }
 
             double[] yvals = viewModel.Chart.ValuesCollection[SelectedValue].YValues;
 

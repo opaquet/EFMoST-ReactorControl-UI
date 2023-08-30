@@ -6,9 +6,15 @@ using Core.Modules.Interfaces;
 namespace Core
 {
     internal static class Factory {
+        private const string GASSENSOR_DATA_FILENAME = "GasSensorData.csv";
+        private const string CONTROLLER_DATA_FILENAME = "ControllerData.csv";
+        private const string RELAY_DATA_FILENAME = "RelayData.csv";
+        private const string COMPUTED_DATA_FILENAME = "Ethanol.csv";
         private const string LOG_FOLDER_PATH = @"EFMoST_ControlAPP\LogFiles\";
+        private const string DATA_FOLDER_PATH = @"EFMoST_ControlAPP\DataFiles\";
         private const string DEFAULT_LOG_FILE = "program.log";
         private static readonly string[] LOG_FILE_NAMES = { "GasSensor.log", "Controller.log" };
+
 
         internal static Manager CreateManager() {
             Manager manager = new();
@@ -23,11 +29,16 @@ namespace Core
 
         internal static IEventLogger CreateEventLogger(string fileName = DEFAULT_LOG_FILE) {
             string desktopFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), LOG_FOLDER_PATH);
-            return new MyEventLogger(new FileWriter_MultiThread(Path.Combine(desktopFolder, fileName)));
+            return new MyEventLogger(new FileWriter_MultiThread(Path.Combine(desktopFolder, fileName), FileWriterMode.Append));
         }
 
         internal static IDataHandler CreateDataHandler() {
-            return new DataHandler();
+            string desktopFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), DATA_FOLDER_PATH);
+            IFileWriter gasSensorFileWriter = new FileWriter_MultiThread(Path.Combine(desktopFolder, GASSENSOR_DATA_FILENAME), FileWriterMode.Replace);
+            IFileWriter controllerFileWriter = new FileWriter_MultiThread(Path.Combine(desktopFolder, CONTROLLER_DATA_FILENAME), FileWriterMode.Replace);
+            IFileWriter relayFileWriter = new FileWriter_MultiThread(Path.Combine(desktopFolder, RELAY_DATA_FILENAME), FileWriterMode.Replace);
+            IFileWriter computedFileWriter = new FileWriter_MultiThread(Path.Combine(desktopFolder, COMPUTED_DATA_FILENAME), FileWriterMode.Replace);
+            return new DataHandler(gasSensorFileWriter, controllerFileWriter, relayFileWriter, computedFileWriter);
         }
 
         internal static IAppSettings CreateAppSettings() {
@@ -51,10 +62,8 @@ namespace Core
             if (appSettings == null) { throw new NullReferenceException(); }
             var gasSensorSettings = appSettings.DeviceSettings.FirstOrDefault(device => device.DeviceName.Contains("Gas"))
                                     ?? throw new Exception("GasSensor not found in settings! Name mismatch?");
-
             var controllerSettings = appSettings.DeviceSettings.FirstOrDefault(device => device.DeviceName.Contains("Con") || device.DeviceName.Contains("SPS") || device.DeviceName.Contains("PLC"))
                                     ?? throw new Exception("Controller not found in settings! Name mismatch?");
-
             return new List<TDeviceSettings> { gasSensorSettings, controllerSettings };
         }
 
@@ -73,8 +82,8 @@ namespace Core
                 : (IReactorControl)new ReactorControl(reactorControlSettings, (msg) => device.SendCommand(msg), dataStore);
         }
 
-        internal static IProcessSimulation CreateProcessSimulation() {
-            return new ProcessSimulation();
+        internal static IProcessSimulation CreateProcessSimulation(IAppSettings? appSettings, IDataHandler? dataHandler) {
+            return new ProcessSimulation(appSettings, dataHandler);
         }
 
         private static void EnsureLogDirectoryExists(string logDirectory) {

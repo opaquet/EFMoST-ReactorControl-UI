@@ -95,7 +95,7 @@ namespace Core.Modules
             // exponential feed increase, but slow down if ethanol concnetration increases beyond critical threshold
             if (IsFeedAutomationActive) {
                 if (CheckControlDeviation(CalculatedFeedRateValue, CurrentFeedRateValue)) {
-                    LogEvent?.Invoke($"Warning: Requested feedrate ({CalculatedFeedRateValue:N1} L/h) differs from reported feedrate ({CurrentFeedRateValue:N1} L/h) by more than 10 %!", 0);
+                    //LogEvent?.Invoke($"Warning: Requested feedrate ({CalculatedFeedRateValue:N1} L/h) differs from reported feedrate ({CurrentFeedRateValue:N1} L/h) by more than 10 %!", 0);
                 }
                 UpdateFeedRateControlOutput(dt);
                 SendFeedRateToController(CalculatedFeedRateValue); 
@@ -103,7 +103,7 @@ namespace Core.Modules
             // pid ventilation control based on dissolved oxygen
             if (IsVentilationAutomationActive) {
                 if (CheckControlDeviation(CalculatedVentilationValue, CurrentVentilationValue)) {
-                    LogEvent?.Invoke($"Warning: Requested ventilation ({CalculatedVentilationValue:N1} L/min) differs from reported ventilation ({CurrentFeedRateValue:N1} L/min) by more than 10 %!", 0);
+                    //LogEvent?.Invoke($"Warning: Requested ventilation ({CalculatedVentilationValue:N1} L/min) differs from reported ventilation ({CurrentFeedRateValue:N1} L/min) by more than 10 %!", 0);
                 }
                 UpdateVentilationControlOutput(dt);
                 SendVentilationToController(CalculatedVentilationValue);
@@ -213,6 +213,7 @@ namespace Core.Modules
                 //turn controlinput on
                 _sendCommandToControllerMCU("!SA(4,1)\n");
                 _sendCommandToControllerMCU($"!SP(3,{actualPWMfeedrateoutput})\n");
+                _sendCommandToControllerMCU("!AI\n");
                 // Timer to turn controlinput off after duty cycle
                 _pwmFeedControlOffTimer?.Dispose();
                 _pwmFeedControlOffTimer = new Timer(PwmFeedControlOffTimerCallback, null, onTime, Timeout.Infinite);
@@ -222,6 +223,7 @@ namespace Core.Modules
                     _sendCommandToControllerMCU("!SA(4,1)\n");
                 }
                 _sendCommandToControllerMCU($"!SP(3,{Convert.ToInt32(feedrate10bitValue)})\n");
+                _sendCommandToControllerMCU("!AI\n");
             }
         }
 
@@ -239,6 +241,7 @@ namespace Core.Modules
             double T = Math.Max(actualTemperature, setTemperature);
             // Calculate the temperature range over which throttling occurs
             double deltaT = maxTemperature - setTemperature;
+            if (deltaT == 0) return 0;
             // Calculate the reduction factor based on the effective temperature, make sure it is always between 0 and 1
             double reductionFactor = Math.Max(0, Math.Min(1, (maxTemperature - T) / deltaT));
             return inVal * reductionFactor;
@@ -281,6 +284,7 @@ namespace Core.Modules
             if (_sendCommandToControllerMCU == null) { return; }
             _sendCommandToControllerMCU("!SA(4,0)\n");
             _sendCommandToControllerMCU($"!SP(3,0)\n");
+            _sendCommandToControllerMCU("!AI\n");
             try {
                 ControlCycleFinished?.Invoke();
             } catch (Exception ex) { LogEvent?.Invoke($"Error updating UI: {ex.Message}", 0); }
@@ -300,6 +304,7 @@ namespace Core.Modules
                 _sendCommandToControllerMCU("!SA(3,1)\n");
             }
             _sendCommandToControllerMCU($"!SP(2,{ventilation10bitValue})\n");
+            _sendCommandToControllerMCU("!AI\n");
         }
 
         /// <summary>
@@ -337,12 +342,14 @@ namespace Core.Modules
             if (onTime < 500) { //if duty cycle is less than 5% dont bother turning on
                 if (ReactorTemperatureSetpoint != 40) {// but first check if valve is closed. close valve if it is open...
                     _sendCommandToControllerMCU($"!SP(4,400)\n");
+                    _sendCommandToControllerMCU("!AI\n");
                 }
 
                 CalculatedTempValveSetting = false;
                 return;
             }
             _sendCommandToControllerMCU($"!SP(4,0)\n");
+            _sendCommandToControllerMCU("!AI\n");
             CalculatedTempValveSetting = true;
 
             // Timer to close valves (by setting setpoint high) after duty cycle
@@ -358,6 +365,7 @@ namespace Core.Modules
         private void PwmTempControlOffTimerCallback(object? state) {
             if (_sendCommandToControllerMCU == null) { return; }
             _sendCommandToControllerMCU($"!SP(4,400)\n");
+            _sendCommandToControllerMCU("!AI\n");
             CalculatedTempValveSetting = false;
             try {
                 ControlCycleFinished?.Invoke();

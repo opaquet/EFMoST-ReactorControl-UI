@@ -30,6 +30,8 @@ namespace ViewModel
 
         public LogStringViewModel? ApplicationLog { get; private set; }
 
+        public SimulationViewModel? Simulation { get; private set; }
+
         public MainViewModel() {
             // create the manager instance from the core program logic first
             _coreManger = Factory.CreateManagerInstance();
@@ -44,7 +46,7 @@ namespace ViewModel
             );
 
             // now creat sub ViewModels
-            ApplicationLog = Factory.CreateLogViewModel(_coreManger.appEventLog);
+            ApplicationLog = Factory.CreateLogViewModel(_coreManger.appEventLog,16);
 
             GasSensor = Factory.CreateDeviceViewModel(_coreManger?.devHandler?.Devices?[0], _coreManger?.deviceLogs?[0] );
             Controller = Factory.CreateDeviceViewModel(_coreManger?.devHandler?.Devices?[1], _coreManger?.deviceLogs?[1] );
@@ -63,6 +65,8 @@ namespace ViewModel
             ControlSettingValues = Factory.CreateControlSettingValueViewModels(_coreManger);
 
             IndicatorDirectControl = Factory.CreateIndicatorDirectControlViewModel(_coreManger);
+
+            Simulation = Factory.CreateSimulationViewModel(_coreManger.processSimulator);
 
             Chart = Factory.CreateChartViewModel(_coreManger, MeasurementValues);
         }

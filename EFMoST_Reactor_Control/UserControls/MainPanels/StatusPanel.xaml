@@ -6,7 +6,7 @@
              xmlns:local="clr-namespace:UI.UserControls"
              mc:Ignorable="d" 
              d:DesignHeight="720" d:DesignWidth="1000">
-    <Border x:Name="Panel" Visibility="Visible" BorderThickness="0" Grid.Column="2" Margin="10" Grid.ColumnSpan="2" CornerRadius="30" Background="#b0b0b0">
+    <Border x:Name="Panel" Visibility="Visible" BorderThickness="0" Grid.Column="2" Margin="10" Grid.ColumnSpan="2" CornerRadius="30" Background="#B0B0B0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="40"/>

@@ -10,7 +10,7 @@ namespace Core.Devices {
         public const int MAX_STOP_STRING_SEND_RETRIES = 1;
         public const int TX_TIMEOUT_MS = 2000;
         public const int RX_TIMEOUT_MS = 1000;
-        public const int TX_WAIT_DELAY_MS = 50;
+        public const int TX_WAIT_DELAY_MS = 75;
         public const int CONNECTION_KEEPALIVE_TIMEOUT_S = 30;
 
         #region BasicDevice: events
@@ -43,6 +43,7 @@ namespace Core.Devices {
         private string _stopStr;
         protected DateTime _lastRXtime = DateTime.Now;
         private Timer? _keepAliveTimer;
+        private object _lockObject = new object();
         #endregion
 
         #region BasicDevice: public properties 
@@ -81,13 +82,20 @@ namespace Core.Devices {
             using SerialPort serialPort = new() { PortName = portName, BaudRate = ComPortSettings.BaudRate, Parity = Parity.None, DataBits = 8, StopBits = StopBits.One, ReadTimeout = RX_TIMEOUT_MS, DtrEnable = false };
             try {
                 serialPort.Open();
-                serialPort.WriteLine(_stopStr);
+                lock (_lockObject) {
+                    serialPort.WriteLine(_stopStr);
+                }
                 Thread.Sleep(TX_WAIT_DELAY_MS);
-                serialPort.DiscardInBuffer();
-                serialPort.DiscardOutBuffer();
-                serialPort.Write(_connectStr);
+                lock (_lockObject) {
+                    serialPort.DiscardInBuffer();
+                    serialPort.DiscardOutBuffer();
+                    serialPort.Write(_connectStr);
+                }
                 for (int i = 0; i < MAX_CONNECTION_RETRIES; i++) {
-                    string reply = GetReplyFromPort(serialPort);
+                    string reply = string.Empty;
+                    lock (_lockObject) {
+                        reply = GetReplyFromPort(serialPort);
+                    }
                     if (!string.IsNullOrEmpty(reply)) {
                         if (IsDevReplyCorrect(reply)) {
                             return true; // If reply is correct, exit early
@@ -203,7 +211,8 @@ namespace Core.Devices {
         private static string TrimReplyToValidJson(string reply) {
             int firstIndex = reply.IndexOf('{');
             int lastIndex = reply.LastIndexOf('}');
-            return (firstIndex >= 0 && lastIndex >= firstIndex) ? reply.Substring(firstIndex, lastIndex - firstIndex + 1) : string.Empty;
+            string result = ( firstIndex >= 0 && lastIndex > firstIndex ) ? reply.Substring(firstIndex, lastIndex - firstIndex + 1) : string.Empty;
+            return result.Replace("\n", "").Replace("\r", ""); ;
         }
 
         // Timer Callback:  der einmal pro sekunde überprüft, wie alt der timestamp vom letzten Messwert ist.
@@ -228,7 +237,10 @@ namespace Core.Devices {
 
         private string GetReplyFromPort(SerialPort? port) {
             try {
-                string reply = port?.ReadLine() ?? string.Empty;
+                string reply = string.Empty;
+                lock (_lockObject) {
+                    reply = port?.ReadLine() ?? string.Empty;
+                }
                 InvokeRX(reply);
                 return TrimReplyToValidJson(reply);
             } catch (TimeoutException) {
@@ -249,7 +261,9 @@ namespace Core.Devices {
                 }
 
                 EnsurePortIsOpen();
+                if (!IsConnected) continue;
                 for (int i = 0; i < MAX_COMMAND_SEND_RETRIES; i++) {
+                    await Task.Delay(TX_WAIT_DELAY_MS);
                     SendMessage(msg);
                     await WaitForCommandAcknowledgment();
                     if (IsCmdValid) {
@@ -259,9 +273,18 @@ namespace Core.Devices {
                 CommandAcknowledged?.Invoke(IsCmdValid);
                 if (!IsCmdValid) {
                     InvokeError($"Send Timeout or command not ackowledged!");
+                    if (ReadTimeoutCounter++ >= 3) {
+                        _isConnected = false;
+                        continue;
+                    }
+
+                } else {
+                    ReadTimeoutCounter = 0;
                 }
             }
         }
+
+        private double ReadTimeoutCounter = 0;
 
         private void EnsurePortIsOpen() {
             if (_port == null) { InvokeError("Trying to ensure, Comport is open bur Port Object is null!");  return; }
@@ -279,9 +302,11 @@ namespace Core.Devices {
 
         private void SendMessage(string msg) {
             try {
-                _port?.DiscardInBuffer();
-                _port?.DiscardOutBuffer();
-                _port?.WriteLine(msg);
+                lock (_lockObject) {
+                    _port?.DiscardInBuffer();
+                    _port?.DiscardOutBuffer();
+                    _port?.WriteLine(msg);
+                }
                 InvokeTX(msg);
             } catch (Exception ex) {
                 InvokeError($"Send Error: {ex.Message}");

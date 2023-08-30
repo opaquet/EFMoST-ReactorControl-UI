@@ -35,15 +35,19 @@ namespace UI.UserControls {
 
         private void UpDownButton_DataContextChanged(object? sender, DependencyPropertyChangedEventArgs e) {
             if (DataContext == null) { return; }
-            viewModel = (ValueViewModel)DataContext;
+            try {
+                viewModel = (ValueViewModel) DataContext;
+            } catch { viewModel = null; }
         }
 
         private void Btn_Inc_MouseDown(object sender, MouseButtonEventArgs e) {
+            if (viewModel == null) { return; }  
             Task.Run(() => Console.Beep(2400, 50));
             viewModel?.Increase();
         }
 
         private void Btn_Dec_MouseDown(object sender, MouseButtonEventArgs e) {
+            if (viewModel == null) { return; }
             Task.Run(() => Console.Beep(1800, 50));
             viewModel?.Decrease();
         }

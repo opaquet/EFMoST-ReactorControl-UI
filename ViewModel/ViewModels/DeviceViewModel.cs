@@ -16,8 +16,12 @@ namespace ViewModel.ViewModels
         private readonly Action _connectionLostHandler;
 
         public bool IsConnected { get; private set; }
-        public string ConnectionStatus { get => IsConnected ? "Verbunden!" : "Nicht Verbunden"; }
-        public string ConnectionStatusColor { get => IsConnected ? "#fafafa!" : "#f44"; }
+        public string ConnectionStatus { 
+            get => IsConnected ? "Verbunden!" : "Nicht Verbunden"; 
+        }
+        public string ConnectionStatusColor { 
+            get => IsConnected ? "#fafafa" : "#f44"; 
+        }
         public LogStringViewModel Log { get; private set; }
         public ICommand SendCommandToDevice { get; private set; }
         public ICommand ReconnectDevice { get; private set; }
@@ -35,7 +39,9 @@ namespace ViewModel.ViewModels
             _rxHandler = (msg) => RX?.Invoke();
             _txHandler = (msg) => TX?.Invoke();
             _ackHandler = (b) => ACK?.Invoke(b);
-            _connectFinishedHandler = (b) => { if (IsConnected != b) { IsConnected = b; } };
+            _connectFinishedHandler = (b) => {
+                if (IsConnected != b) { IsConnected = b; } 
+            };
             _connectionLostHandler = () => { if (IsConnected) { IsConnected = false; } };
 
 
@@ -43,6 +49,8 @@ namespace ViewModel.ViewModels
             device.RX += _rxHandler;
             device.TX += _txHandler;
             device.CommandAcknowledged += _ackHandler;
+            device.ConnectFinished += (b) => _connectFinishedHandler?.Invoke(b);
+            device.ConnectionLost += _connectionLostHandler;
 
             //commands
             SendCommandToDevice = new SendToDeviceCommand(device);
@@ -51,6 +59,8 @@ namespace ViewModel.ViewModels
             //device events to update propertys
             device.ConnectFinished += _connectFinishedHandler;
             device.ConnectionLost += _connectionLostHandler;
+
+            IsConnected = device.IsConnected;
         }
 
         public override void Dispose() {

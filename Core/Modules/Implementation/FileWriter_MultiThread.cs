@@ -1,4 +1,5 @@
 ﻿using Core.Modules.Interfaces;
+using System.Text;
 
 namespace Core.Modules
 {
@@ -19,8 +20,8 @@ namespace Core.Modules
         /// Constructor. Needs the name of the target file to write to.
         /// </summary>
         /// <param name="path">Full path to the file where the strings should be written to.</param>
-        public FileWriter_MultiThread(string path) : base(path) {
-            _writeTask = Task.Run(WriteToFile);
+        public FileWriter_MultiThread(string path, FileWriterMode mode) : base(path, mode) {
+            _writeTask = Task.Run(WriteToFileAsync);
         }
 
         /// <summary>
@@ -48,21 +49,49 @@ namespace Core.Modules
             _semaphore.Release();
         }
 
-        private async void WriteToFile() {
-            using StreamWriter w = File.AppendText(_filepath);
-            while (!_source.IsCancellationRequested) {
-                await _semaphore.WaitAsync();
-                string? textLine = null;
-                lock (_lockObject) {
-                    if (_textToWrite.Count > 0) {
-                        textLine = _textToWrite.Dequeue();
+        /// <summary>
+        /// Appends a string array as a multiple line to the specified text file (asychronously) 
+        /// </summary>
+        /// <param name="line">array with Lines of text to append to the file</param>
+        public void WriteLines(string[] lines) {
+            lock (_lockObject) {
+                StringBuilder sb = new StringBuilder();
+                foreach (string line in lines) {
+                    sb.AppendLine(line);
+                }
+                _textToWrite.Enqueue(sb.ToString());
+            }
+            _semaphore.Release();
+        }
+
+        /// <summary>
+        /// Appends a stringbuilder as a single or multiple lines to the specified text file (asychronously) 
+        /// </summary>
+        /// <param name="line">stringbuilder object with text to append to the file</param>
+        public void WriteLines(StringBuilder lines) {
+            lock (_lockObject) {
+                _textToWrite.Enqueue(lines.ToString());
+            }
+            _semaphore.Release();
+        }
+
+        private async Task WriteToFileAsync() {
+            try {
+                while (!_source.Token.IsCancellationRequested) {
+                    await _semaphore.WaitAsync(_source.Token).ConfigureAwait(false);
+                    if (_source.Token.IsCancellationRequested) { return; }
+                    string? textLine = string.Empty;
+                    if (_textToWrite.TryDequeue(out textLine)) {
+                        await using StreamWriter w = Mode == FileWriterMode.Append ? File.AppendText(_filepath) : File.CreateText(_filepath);
+                        await w.WriteLineAsync(textLine).ConfigureAwait(false);
+                        await w.FlushAsync().ConfigureAwait(false);
                     }
                 }
-                if (textLine != null) {
-                    await w.WriteLineAsync(textLine);
-                }
-
-                w.Flush();
+            } catch (OperationCanceledException) {
+            } catch (Exception ex) {
+                Console.Error.WriteLine($"An error occurred: {ex.Message}");
+            } finally {
+                _semaphore.Release();
             }
         }
     }

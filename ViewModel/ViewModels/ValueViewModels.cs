@@ -23,7 +23,7 @@ namespace ViewModel.ViewModels {
                     < 1 => "#fafafa",
                     < 2 => "#f0f040",
                     < 3 => "#ff8040",
-                    _ => "#ffffff"
+                    _ => "#ff8040"
                 };
             }
         }
@@ -42,8 +42,12 @@ namespace ViewModel.ViewModels {
         public double ChangeAmount { get; private set; }
         public bool IsChangeAllowed { get; private set; }
         public void SetValue(double value) {
-            if (Value != value) { Value = value; }
+            SetValue(value, true);
+        }
+        public void SetValue(double value, bool checkValue = true) {
+            if (!checkValue || Value != value) { Value = value; }
             _changeBaseValue?.Invoke(Value);
+            InvokePropertyChanged(this,new System.ComponentModel.PropertyChangedEventArgs(nameof(Value)));
         }
         public void Increase() {
             switch (ChangeType) {
@@ -85,7 +89,9 @@ namespace ViewModel.ViewModels {
             Unit = unit ?? string.Empty;
             IsNameVisible = isNameVisible;
             Information = information ?? string.Empty;
-            _changeBaseValue = baseValueUpdateAction;
+            if (baseValueUpdateAction != null) {
+                _changeBaseValue = (d) => baseValueUpdateAction?.Invoke(d);
+            }
         }
     }
 }

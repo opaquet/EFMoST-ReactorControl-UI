@@ -54,7 +54,7 @@ namespace Core.Modules
             }
 
             if (WriteToFile) {
-                _filewriter?.WriteLine($"{entry.Timestamp:dd.MM.yy HH:mm:ss}:\t{logLevel}\t{label}\t{msg}");
+                _filewriter?.WriteLine($"{entry.Timestamp:dd.MM.yy HH:mm:ss} | {logLevel,2} | {label,-20} | {msg}");
             }
 
             LogUpdated?.Invoke();
@@ -73,13 +73,17 @@ namespace Core.Modules
         /// <param name="amount">Number of elements or lines that should be returned.</param>
         /// <param name="maxLogLevel">highes loglevel. Only values of equal or smaller loglevel are returned</param>
         /// <returns></returns>
-        public string LogString(int amount = 50, int maxLogLevel = 0) {
+        public string LogString(int amount = 50, int maxLogLevel = 0, int centerwidth = 16) {
             IEnumerable<string> logs;
             lock (_lockObject) {
                 logs = _logEntries
                         .Where(e => e.LogLevel <= maxLogLevel)
                         .Skip(Math.Max(0, _logEntries.Count - amount))
-                        .Select(e => $"{e.Timestamp:HH:mm:ss}: {e.Label}    \t{e.Message}");
+                        .Select(e => {
+                            string indentation = new string(' ', e.LogLevel * 2);
+                            string paddedLabel = e.Label.PadRight(centerwidth);
+                            return $"{e.Timestamp:HH:mm:ss} | {paddedLabel} | {indentation}{e.Message}";
+                        });
             }
             try {
                 return string.Join("\n", logs);

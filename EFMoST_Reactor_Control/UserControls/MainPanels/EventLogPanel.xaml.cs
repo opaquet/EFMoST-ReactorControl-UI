@@ -48,7 +48,7 @@ namespace UI.UserControls.MainPanels {
 
         private void Button_Click_0(object sender, RoutedEventArgs e) {
             if (viewModel == null) { return; }
-            viewModel.Controller.SendCommandToDevice.Execute(port0_sendstr.Text);
+            viewModel.GasSensor.SendCommandToDevice.Execute(port0_sendstr.Text);
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e) {

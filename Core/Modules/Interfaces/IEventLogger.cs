@@ -10,7 +10,7 @@ namespace Core.Modules.Interfaces
         void Log(string Msg, string Label = "", int LogLevel = 0);
         void Append(string Msg, string Label = "", int LogLevel = 0);
         void Clear();
-        string LogString(int amount = 50, int MaxLogLevel = 0);
+        string LogString(int amount = 50, int MaxLogLevel = 0, int centerfieldwidth = 16);
     }
 }
 

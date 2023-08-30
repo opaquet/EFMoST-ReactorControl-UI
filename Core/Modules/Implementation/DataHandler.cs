@@ -11,7 +11,7 @@ namespace Core.Modules
     /// Class <b>DataHandler</b>. This contains methods and fields to evalate and store all data from the gas sensor and controller
     /// </summary>
     internal class DataHandler : IDataHandler, IDisposable {
-        
+
         public event Action<TComputedValuesData>? GasSensorCycleComplete;
         public event Action<TControllerData.ControllerErrors>? ControllerErrorReport;
         public event Action<string,int>? LogEvent;
@@ -23,6 +23,11 @@ namespace Core.Modules
         private List<TRawData> _relayData = new();
         private int _lastGasSensorCycle = 0;
         private Timer? _SaveTimer;
+
+        private IFileWriter _FileWriterGasSensorData;
+        private IFileWriter _FileWriterControllerData;
+        private IFileWriter _FileWriterRelayData;
+        private IFileWriter _FileWriterComputedData;
 
         private TComputedValuesData _LastComputedDatum = new();
         private TControllerData _LastControllerDatum = new();
@@ -58,10 +63,14 @@ namespace Core.Modules
         private double[] ExtractValuesFromComputedData(Func<TComputedValuesData, double> selector) => _computedValues.Select(selector).ToArray();
         #endregion
 
-        public DataHandler() {
+        public DataHandler(IFileWriter fileWriterGas, IFileWriter fileWriterController, IFileWriter fileWriterRelay, IFileWriter fileWriterComputedData) {
             _gasSensorData.Add(new TGasSensorData());
             _computedValues.Add(new TComputedValuesData());
             _controllerData.Add(new TControllerData());
+            _FileWriterGasSensorData = fileWriterGas;
+            _FileWriterControllerData = fileWriterController;
+            _FileWriterRelayData = fileWriterRelay;
+            _FileWriterComputedData = fileWriterComputedData;
         }
 
         public void Begin() {
@@ -71,19 +80,20 @@ namespace Core.Modules
         }
 
         private void SaveTimerCallback(object? state) {
-            string desktopFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            SaveGasSensorDataCSV($"{desktopFolder}\\EFMoST_ControlAPP\\GasSensorData.csv");
-            SaveControllerDataCSV($"{desktopFolder}\\EFMoST_ControlAPP\\ControllerData.csv");
-            SaveRelayDataCSV($"{desktopFolder}\\EFMoST_ControlAPP\\RelayData.csv");
+            SaveGasSensorDataCSV();
+            SaveControllerDataCSV();
+            SaveRelayDataCSV();
+            SaveComputedDataCSV();
         }
 
 
         public void Dispose() {
             try {
                 string desktopFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                SaveGasSensorDataCSV($"{desktopFolder}\\EFMoST_ControlAPP\\GasSensorData.csv");
-                SaveControllerDataCSV($"{desktopFolder}\\EFMoST_ControlAPP\\ControllerData.csv");
-                SaveRelayDataCSV($"{desktopFolder}\\EFMoST_ControlAPP\\RelayData.csv");
+                SaveGasSensorDataCSV();
+                SaveControllerDataCSV();
+                SaveRelayDataCSV();
+                SaveComputedDataCSV();
             } catch (Exception ex) {
                 LogEvent?.Invoke($"Error during Dispose: {ex.Message}",0);
             }
@@ -109,7 +119,7 @@ namespace Core.Modules
             }
         }
 
-        public void SaveRelayDataCSV(string filename) {
+        public void SaveRelayDataCSV() {
             try {
                 StringBuilder csvContent = new();
                 // Header for GasSensorData
@@ -118,14 +128,14 @@ namespace Core.Modules
                 foreach (TRawData data in _relayData) {
                     csvContent.AppendLine($"{data.TimeStamp};{data.Message}");
                 }
-                File.WriteAllText(filename, csvContent.ToString());
-                LogEvent?.Invoke($"Relay data saved successfully to {filename}.", 1);
+                _FileWriterRelayData.WriteLines(csvContent);
+                LogEvent?.Invoke($"Relay data saved successfully to {_FileWriterRelayData.FileName}.", 1);
             } catch (Exception ex) {
-                LogEvent?.Invoke($"Error: Error saving relay data to {filename}. Error: {ex.Message}", 0);
+                LogEvent?.Invoke($"Error: Error saving relay data to {_FileWriterRelayData.FileName}. Error: {ex.Message}", 0);
             }
         }
 
-        public void SaveGasSensorDataCSV(string filename) {
+        public void SaveGasSensorDataCSV() {
             try {
                 StringBuilder csvContent = new();
                 // Header for GasSensorData
@@ -136,14 +146,14 @@ namespace Core.Modules
                     string environment = string.Join(";", data.Enviroment.Select(v => v.ToString(CultureInfo.InvariantCulture)));
                     csvContent.AppendLine($"{data.TimeStamp};{data.ID};{values};{environment};{data.ValveSetting};{data.MeasurementCycle};{data.SensorTime};{data.SensorState};{data.SensorStateTime}");
                 }
-                File.WriteAllText(filename, csvContent.ToString());
-                LogEvent?.Invoke($"GasSensor data saved successfully to {filename}.", 1);
+                _FileWriterGasSensorData.WriteLines(csvContent);
+                LogEvent?.Invoke($"GasSensor data saved successfully to {_FileWriterGasSensorData.FileName}.", 1);
             } catch (Exception ex) {
-                LogEvent?.Invoke($"Error: Error saving GasSensor data to {filename}. Error: {ex.Message}", 0);
+                LogEvent?.Invoke($"Error: Error saving GasSensor data to {_FileWriterGasSensorData.FileName}. Error: {ex.Message}", 0);
             }
         }
 
-        public void SaveControllerDataCSV(string filename) {
+        public void SaveControllerDataCSV() {
             try {
                 StringBuilder csvContent = new();
                 // Header for ControllerData
@@ -175,14 +185,14 @@ namespace Core.Modules
                     string digitalOut = string.Join(";", data.DigitalOut.Select(b => b ? "1" : "0")); // Convert bool to 1 or 0
                     csvContent.AppendLine($"{data.TimeStamp};{values};{setpoints};{automatic};{active};{alarm};{analogOut};{digitalOut};{data.DirectControl};{data.ErrorCode}");
                 }
-                File.WriteAllText(filename, csvContent.ToString());
-                LogEvent?.Invoke($"Controller data saved successfully to {filename}.",1);
+                _FileWriterControllerData.WriteLines(csvContent);
+                LogEvent?.Invoke($"Controller data saved successfully to {_FileWriterControllerData.FileName}.",1);
             } catch (Exception ex) {
-                LogEvent?.Invoke($"Error: Error saving controller data to {filename}. Error: {ex.Message}",0);
+                LogEvent?.Invoke($"Error: Error saving controller data to {_FileWriterControllerData.FileName}. Error: {ex.Message}",0);
             }
         }
 
-        public void SaveComputedDataCSV(string filename) {
+        public void SaveComputedDataCSV() {
             try {
                 StringBuilder csvContent = new();
                 // Header for ComputedValues
@@ -191,10 +201,10 @@ namespace Core.Modules
                 foreach (var data in _computedValues.Skip(1)) {
                     csvContent.AppendLine($"{data.TimeStamp};{data.Ethanol.ToString(CultureInfo.InvariantCulture)};{data.H2S.ToString(CultureInfo.InvariantCulture)}");
                 }
-                File.WriteAllText(filename, csvContent.ToString());
-                LogEvent?.Invoke($"Computed GasSensor data saved successfully to {filename}.", 1);
+                _FileWriterComputedData.WriteLines(csvContent);
+                LogEvent?.Invoke($"Computed GasSensor data saved successfully to {_FileWriterComputedData.FileName}.", 1);
             } catch (Exception ex) {
-                LogEvent?.Invoke($"Error: Error saving computed GasSensor data to {filename}. Error: {ex.Message}", 0);
+                LogEvent?.Invoke($"Error: Error saving computed GasSensor data to {_FileWriterComputedData.FileName}. Error: {ex.Message}", 0);
             }
         }
         #endregion

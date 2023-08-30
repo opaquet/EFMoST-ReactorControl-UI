@@ -6,7 +6,24 @@ namespace Core.Modules.Interfaces
     {
         event Action<string, int> LogEvent;
         event Action<string> StartupEvent;
-        void SimulateUntil(DateTime time);
+        event Action SimulationStepFinished;
+
+
+        double[] SimTime { get; }
+        double[] SimTimeFuture { get; }
+        double[] SimBiomass { get; }
+        double[] SimBiomassFuture { get; }
+        double[] SimGlucose { get ; }
+        double[] SimGlucoseFuture { get; }
+        double[] SimEthanol { get; }
+        double[] SimEthanolFuture { get; }
+        double[] SimOxygen { get; }
+        double[] SimOxygenFuture { get; }
+        double[] SimTemperature { get; }
+        double[] SimTemperatureFuture { get; }
+        double[] SimVolume { get; }
+        double[] SimVolumeFuture { get; }
+
 
         public void Begin();
     }

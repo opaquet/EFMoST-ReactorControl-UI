@@ -13,8 +13,12 @@ namespace ViewModel {
             return manager;
         }
 
-        public static LogStringViewModel CreateLogViewModel(IEventLogger? log) {
-            return log is null ? throw new NullReferenceException() : new(log);
+        public static SimulationViewModel CreateSimulationViewModel(IProcessSimulation procSim) {
+            return new(procSim);
+        }
+
+        public static LogStringViewModel CreateLogViewModel(IEventLogger? log, int width) {
+            return log is null ? throw new NullReferenceException() : new(log, width);
         }
 
         public static ChartViewModel CreateChartViewModel(Manager? manager, IReadOnlyList<ValueViewModel> measurementViewModels) {
@@ -40,13 +44,13 @@ namespace ViewModel {
             SubscribeToControllerDataUpdate(manager, handler);
 
             void handler3(TComputedValuesData ComputedData) {
-                chartViewModel.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ComputedData.Ethanol }, 14);
-                chartViewModel.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = ComputedData.H2S }, 15);
+                chartViewModel.AddPoint(new MeasurementPoint { X = (DateTime.Now - manager.StartTime).TotalHours, Y = ComputedData.Ethanol }, 14);
+                chartViewModel.AddPoint(new MeasurementPoint { X = (DateTime.Now - manager.StartTime).TotalHours, Y = ComputedData.H2S }, 15);
             }
             SubscribeToComputedDataUpdate(manager, handler3);
 
             void handler2(TGasSensorData GasSensorData) {
-                chartViewModel.AddPoint(new MeasurementPoint { X = (manager.StartTime - DateTime.Now).TotalHours, Y = GasSensorData.Values.Average() }, 16);
+                chartViewModel.AddPoint(new MeasurementPoint { X = (DateTime.Now - manager.StartTime).TotalHours, Y = GasSensorData.Values.Average() }, 16);
             }
             SubscribeToGasSensorDataUpdate(manager, handler2);
 
@@ -56,7 +60,7 @@ namespace ViewModel {
         public static DeviceViewModel CreateDeviceViewModel(IDevice? dev, IEventLogger? log) {
             return (dev == null)
                 ? throw new NullReferenceException()
-                : new(dev, CreateLogViewModel(log));
+                : new(dev, CreateLogViewModel(log, 7));
         }
 
 
@@ -82,45 +86,45 @@ namespace ViewModel {
             EnsureNotNull(manager?.settings, nameof(manager.settings));
             List<ValueViewModel> valueViewModels = new() {
                 //allgemein
-                new(name:"Temperatur Soll",unit:"°C",maxValue:50, decimalPlaces : 1, 
-                    value: manager.settings.ReactorControlSettings.TemperatureMaxValue, changeAllowed:true,
-                    baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.TemperatureMaxValue = v),
-                new(name:"Temperatur Max",unit:"°C",maxValue:50, decimalPlaces: 1, 
+                new(name:"Temperatur Soll",unit:"°C",maxValue:50, decimalPlaces : 1, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
                     value: manager.settings.ReactorControlSettings.TemperatureSetpoint, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.TemperatureSetpoint = v),
+                new(name:"Temperatur Max",unit:"°C",maxValue:50, decimalPlaces: 1, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
+                    value: manager.settings.ReactorControlSettings.TemperatureMaxValue, changeAllowed:true,
+                    baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.TemperatureMaxValue = v),
                 //feedregelung
-                new(name:"Inkrement",unit:"/h",maxValue:1, decimalPlaces: 2, 
+                new(name:"Inkrement",unit:"/h",maxValue:1, decimalPlaces: 2, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.01,
                     value: manager.settings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement = v),
-                new(name:"Ethanol Soll",unit:"g/L",maxValue:20, decimalPlaces: 1, 
+                new(name:"Ethanol Soll",unit:"g/L",maxValue:20, decimalPlaces: 1, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
                     value: manager.settings.ReactorControlSettings.FeedControlSettings.EthanolTargetConcentration, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.FeedControlSettings.EthanolTargetConcentration = v),
-                new(name:"Ausgabe",unit:"/h",maxValue:1, decimalPlaces: 2, 
+                new(name:"Ausgabe",unit:"/h",maxValue:1, decimalPlaces: 2, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
                     value: manager.reactorControl.CalculatedFeedRateValue, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.reactorControl.SetFeedRate(v)),
                 //belüftungsregelung
-                new(name:"dO Sollwert",unit:"mg/L",maxValue:25, decimalPlaces: 1, 
+                new(name:"dO Sollwert",unit:"mg/L",maxValue:25, decimalPlaces: 1, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
                     value: manager.settings.ReactorControlSettings.VentilationControlSettings.OxygenTargetConcentration, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.VentilationControlSettings.OxygenTargetConcentration = v),
-                new(name:"kP",unit:"",maxValue:1000, decimalPlaces: 2, 
+                new(name:"kP",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
                     value: manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kp, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kp = v),
-                new(name:"kI",unit:"",maxValue:1000, decimalPlaces: 2, 
+                new(name:"kI",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
                     value: manager.settings.ReactorControlSettings.VentilationControlSettings.PID_ki, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.VentilationControlSettings.PID_ki = v),
-                new(name:"kD",unit:"",maxValue:1000, decimalPlaces: 2, 
+                new(name:"kD",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
                     value : manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kd, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kd = v),
                 new(name:"Ausgabe",unit:"L/min",maxValue:100,decimalPlaces: 1, 
                     value: manager.reactorControl.CalculatedVentilationValue, changeAllowed:false),
                 //tempregelung
-                new(name:"kP",unit:"",maxValue:1000, decimalPlaces: 2, 
+                new(name:"kP",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
                     value: manager.settings.ReactorControlSettings.TemperatureControlSettings.PID_kp, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.TemperatureControlSettings.PID_kp = v),
-                new(name:"kI",unit:"",maxValue:1000, decimalPlaces: 2, 
+                new(name:"kI",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
                     value : manager.settings.ReactorControlSettings.VentilationControlSettings.PID_ki, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.TemperatureControlSettings.PID_kp = v),
-                new(name:"kD",unit:"",maxValue:1000, decimalPlaces: 2, 
+                new(name:"kD",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
                     value : manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kd, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.TemperatureControlSettings.PID_kp = v),
                 new(name:"Ausgabe",unit:"%",maxValue:100,decimalPlaces: 1, 
@@ -133,11 +137,13 @@ namespace ViewModel {
             };
 
             // setup Events to react when the values have been changed by the core logic
-            Action handler = () => { valueViewModels[0].SetValue(manager.settings.ReactorControlSettings.TemperatureMaxValue); };
+            Action handler = () => { valueViewModels[0].SetValue(manager.settings.ReactorControlSettings.TemperatureSetpoint ); };
             SubscribeToControlCycleUpdate(manager, handler);
-            handler = () => { valueViewModels[1].SetValue(manager.settings.ReactorControlSettings.TemperatureSetpoint); };
+            handler = () => { valueViewModels[1].SetValue(manager.settings.ReactorControlSettings.TemperatureMaxValue); };
             SubscribeToControlCycleUpdate(manager, handler);
-            handler = () => { valueViewModels[4].SetValue(manager.reactorControl.CalculatedFeedRateValue); };
+            handler = () => { 
+                valueViewModels[4].SetValue(manager.reactorControl.CalculatedFeedRateValue);
+            };
             SubscribeToControlCycleUpdate(manager, handler);
             handler = () => { valueViewModels[9].SetValue(manager.reactorControl.CalculatedVentilationValue); };
             SubscribeToControlCycleUpdate(manager, handler);
@@ -151,7 +157,7 @@ namespace ViewModel {
             return valueViewModels;
         }
 
-            public static IReadOnlyList<ValueViewModel> CreateSetPointValueViewModels(Manager? manager) {
+        public static IReadOnlyList<ValueViewModel> CreateSetPointValueViewModels(Manager? manager) {
             EnsureNotNull(manager, nameof(manager));
             // generate List of Viewmodels
             List<ValueViewModel> valueViewModels = new() {
@@ -195,19 +201,20 @@ namespace ViewModel {
                 new(decimalPlaces : 0, name : "frei"),
             };
             // setup update Events
-            for (int i = 0; i < valueViewModels.Count; i++) {
+            for (int i = 0; i < 14; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Values[localI]);
+                void handler(TControllerData ContollerData) => 
+                    valueViewModels[localI].SetValue(ContollerData.Values[localI], false);
                 SubscribeToControllerDataUpdate(manager, handler);
             }
 
-            void handler2(TComputedValuesData ComputedData) => valueViewModels[15].SetValue(ComputedData.Ethanol);
+            void handler2(TComputedValuesData ComputedData) => valueViewModels[14].SetValue(ComputedData.Ethanol, false);
             SubscribeToComputedDataUpdate(manager, handler2);
 
-            void handler3(TComputedValuesData ComputedData) => valueViewModels[16].SetValue(ComputedData.H2S);
+            void handler3(TComputedValuesData ComputedData) => valueViewModels[15].SetValue(ComputedData.H2S, false);
             SubscribeToComputedDataUpdate(manager, handler3);
 
-            void handler4(TGasSensorData GasSensorData) => valueViewModels[17].SetValue(GasSensorData.Values.Average());
+            void handler4(TGasSensorData GasSensorData) => valueViewModels[16].SetValue(GasSensorData.Values.Average(), false);
             SubscribeToGasSensorDataUpdate(manager, handler4);
 
             return valueViewModels;
@@ -287,7 +294,7 @@ namespace ViewModel {
             // setup update Events
             for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Automatic[localI] ? 1 : 0);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Automatic[localI] ? 2 : 0);
                 SubscribeToControllerDataUpdate(manager, handler);
             }
             return valueViewModels;
@@ -307,7 +314,7 @@ namespace ViewModel {
             // setup update Events
             for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Active[localI] ? 1 : 0);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Active[localI] ? 2 : 0);
                 SubscribeToControllerDataUpdate(manager, handler);
             }
             return valueViewModels;
@@ -327,7 +334,7 @@ namespace ViewModel {
             // setup update Events
             for (int i = 0; i < valueViewModels.Count; i++) {
                 int localI = i;
-                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Alarm[localI] ? 1 : 0);
+                void handler(TControllerData ContollerData) => valueViewModels[localI].SetValue(ContollerData.Alarm[localI] ? 2 : 0);
                 SubscribeToControllerDataUpdate(manager, handler);
             }
             return valueViewModels;

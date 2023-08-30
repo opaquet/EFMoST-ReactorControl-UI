@@ -44,7 +44,7 @@
             <local:UpDownButton Grid.Row="5" Grid.Column="5" DataContext="{Binding ControlSettingValues[13]}"/>
             <local:UpDownButton Grid.Row="5" Grid.Column="7" DataContext="{Binding ControlSettingValues[14]}"/>
 
-            <Border CornerRadius="15" x:Name="BorderCover1" Grid.Column="1" Grid.ColumnSpan="7" Grid.Row="3" Grid.RowSpan="3" Background="#80fafafa" DataContext="{Binding IndicatorAutomation[4]}" Visibility="{Binding isIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
+            <Border CornerRadius="15" x:Name="BorderCover1" Grid.Column="1" Grid.ColumnSpan="7" Grid.Row="3" Grid.RowSpan="3" Background="#80fafafa" DataContext="{Binding AutomaticIndicators[4]}" Visibility="{Binding IsIndicating, Converter={StaticResource BoolToVisibility }, Mode=OneWay}"/>
         </Grid>
     </Border>
 </UserControl>

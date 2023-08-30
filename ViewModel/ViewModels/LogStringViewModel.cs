@@ -17,12 +17,12 @@ namespace ViewModel.ViewModels
         private IEventLogger _logger;
         private Action _logAction;
 
-        public LogStringViewModel(IEventLogger logger) {
+        public LogStringViewModel(IEventLogger logger, int centerWidth ) {
 
             _logger = logger;
-            LogString = logger.LogString(50, 10);
+            LogString = logger.LogString(50, 10, centerWidth);
             _logAction = () => {
-                LogString = logger.LogString(50, 10);
+                LogString = logger.LogString(50, 10, centerWidth);
                 EntryCount = logger.Count;
             };
             logger.LogUpdated += _logAction;
