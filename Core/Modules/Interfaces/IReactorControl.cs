@@ -19,6 +19,7 @@ namespace Core.Modules.Interfaces
         bool CalculatedTempValveSetting { get; }
         double CalculatedTempControlSeeting { get; }
 
+        void SetSimlation(IProcessSimulation sim);
         void Begin();
 
         //outside communication

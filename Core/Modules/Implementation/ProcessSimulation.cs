@@ -1,26 +1,37 @@
-﻿using System;
-using System.Globalization;
-using System.Reflection;
-using System.Runtime;
-using System.Security.Cryptography;
-using Core.DataTypes;
+﻿using Core.DataTypes;
 using Core.Modules.Interfaces;
+using System.Diagnostics;
 
-namespace Core.Modules
-{
+namespace Core.Modules {
     internal class ProcessSimulation : IProcessSimulation, IDisposable {
 
         public event Action<string, int>? LogEvent;
         public event Action<string>? StartupEvent;
-
         public event Action? SimulationStepFinished;
+        public IReadOnlyList<double> SimTimeValues { get => _allSimTimesUntilNow; }
+        public IReadOnlyList<double> SimTimePredictions { get => _FutureSimTimes2Hours; }
+        public IReadOnlyList<double[]> SimStateValues { get => _allSimValuesUntilNow; }
+        public IReadOnlyList<double[]> SimStatePredictions { get => _FutureSimValues2Hours; }
+
+
 
         private IAppSettings _appSettings;
         private IDataHandler _dataStore;
-
+        private IReactorControl _reactorControl;
 
         private double _acualFeedRate = 0;
+        private double _acualVentilationRate = 0;
         private double[] _simStateValues = new double[6];
+
+        public double Biomass { get => _simStateValues[0]; set => _simStateValues[0] = value; }
+        public double Sugar { get => _simStateValues[1]; set => _simStateValues[1] = value; }
+        public double Ethanol { get => _simStateValues[2]; set => _simStateValues[2] = value; }
+        public double Oxygen { get => _simStateValues[3] * 1000; set => _simStateValues[3] = value / 1000; }
+        public double Temperature { get => _simStateValues[4] - 273.15; set => _simStateValues[4] = value + 273.15; }
+        public double Volume { get => _simStateValues[5]; set => _simStateValues[5] = value; }
+        public double TotalFeedVolume { get; private set; } = 0;
+
+        public double DeltaTime { get; private set; } = 0;
 
         private List<double> _allSimTimesUntilNow = new List<double>();
         private List<double> _FutureSimTimes2Hours = new List<double>();
@@ -34,39 +45,18 @@ namespace Core.Modules
         private double _tLast = 0;
         private DateTime _startTime = DateTime.Now;
 
-        public double[] SimTime { get => _allSimTimesUntilNow.ToArray(); }
-        public double[] SimTimeFuture { get => _FutureSimTimes2Hours.ToArray(); }
 
-        public double[] SimBiomass { get => _allSimValuesUntilNow.Select(value => value[0]).ToArray(); }
-        public double[] SimBiomassFuture { get => _FutureSimValues2Hours.Select(value => value[0]).ToArray(); }
 
-        public double[] SimGlucose { get => _allSimValuesUntilNow.Select(value => value[1]).ToArray(); }
-        public double[] SimGlucoseFuture { get => _FutureSimValues2Hours.Select(value => value[1]).ToArray(); }
 
-        public double[] SimEthanol { get => _allSimValuesUntilNow.Select(value => value[2]).ToArray(); }
-        public double[] SimEthanolFuture { get => _FutureSimValues2Hours.Select(value => value[2]).ToArray(); }
-
-        public double[] SimOxygen { get => _allSimValuesUntilNow.Select(value => value[3]).ToArray(); }
-        public double[] SimOxygenFuture { get => _FutureSimValues2Hours.Select(value => value[3]).ToArray(); }
-
-        public double[] SimTemperature { get => _allSimValuesUntilNow.Select(value => value[4]).ToArray(); }
-        public double[] SimTemperatureFuture { get => _FutureSimValues2Hours.Select(value => value[4]).ToArray(); }
-
-        public double[] SimVolume { get => _allSimValuesUntilNow.Select(value => value[4]).ToArray(); }
-        public double[] SimVolumeFuture { get => _FutureSimValues2Hours.Select(value => value[4]).ToArray(); }
-
-        public void SimulateUntil(DateTime time) {
-
-        }
-
-        public ProcessSimulation(IAppSettings settings, IDataHandler dataHandler ) { 
+        public ProcessSimulation(IAppSettings settings, IDataHandler dataHandler, IReactorControl reactorControl) {
             _appSettings = settings;
             _dataStore = dataHandler;
+            _reactorControl = reactorControl;
         }
-
 
         public void Dispose() {
             LogEvent?.Invoke("SimModule stopped!", 1);
+            _simIntervalTimer?.Dispose();
         }
 
         public void Begin() {
@@ -78,49 +68,86 @@ namespace Core.Modules
                 _appSettings.SimSettings.StartSugar,
                 0,
                 0,
-                303,
+                _appSettings.SimSettings.StartTemp,
                 _appSettings.SimSettings.StartV
             };
 
             _simIntervalTimer?.Dispose();
             StartupEvent?.Invoke("starting controlIntervalTimer...");
-            _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime*1000));
+            _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 100));
         }
 
         private void SimTimerCallback(object? state) {
+            // determine time...
+            _tNow = ( DateTime.Now - _startTime ).TotalSeconds;
+            DeltaTime = _tNow - _tLast;
 
-            _acualFeedRate = _dataStore.GetLastControllerDatum().Setpoints[3] / 3600;
-            SimStep();
+            // Get control inputs to the system
+            // when feed automation is active, it may run in pwm mode, and then, querying the setpoint wil result in wrong values
+            if (_dataStore.GetLastControllerDatum().Automatic[3])
+                _acualFeedRate = _reactorControl.CalculatedFeedRateValue / 3600;
+            else
+                _acualFeedRate = _dataStore.GetLastControllerDatum().Setpoints[3] / 3600;
+            _acualVentilationRate = _dataStore.GetLastControllerDatum().Setpoints[2] / 60;
 
-        }
-
-
-
-        private void SimStep() {
-
-            _tNow = (DateTime.Now - _startTime).TotalSeconds;
 
             // solve from last step to now
-            (List<double> X, List<double[]> Y) = RK45Solver( model: SimModel, 
-                                                     initialValues: _simStateValues, 
-                                                     xStart: _tLast, 
-                                                     xEnd: _tNow, 
-                                                     tol: 1e-10);
+            (double X, double[] Y) = RK45SolverLast(model: SimModel,
+                                         initialValues: _simStateValues,
+                                         xStart: _tLast,
+                                         xEnd: _tNow,
+                                         tol: 1e-8);
+            
+            //later addition: sum up the total feed volume
+            TotalFeedVolume += _acualFeedRate * ( _tNow - _tLast );
 
-            _simStateValues = (double[])Y[Y.Count - 1].Clone();
-            _allSimTimesUntilNow.AddRange(X);
-            _allSimValuesUntilNow.AddRange(Y);
+            Debug.Write(_tLast.ToString("F2"));
+            Debug.Write(", ");
+            Debug.Write(_tNow.ToString("F2"));
+            Debug.Write(", ");
+            Debug.Print(X.ToString("F2"));
+
+            // update values
+            _tLast = _tNow;
+            _simStateValues = (double[]) Y.Clone();
+            _allSimTimesUntilNow.Add(_tNow);
+            _allSimValuesUntilNow.Add(Y);
+
+
+
+            double measuredTemp = _dataStore.GetLastControllerDatum().Values[4] + 273.15;
+            double measuredVolume = _dataStore.GetLastControllerDatum().Values[0];
+            double measuredEthanol = _dataStore.GetLastComputedValueDatum().Ethanol;
+            double measuredOxygen = _dataStore.GetLastControllerDatum().Values[7]/1000;
+
+            // temp correction
+            _simStateValues[4] = ( _simStateValues[4] * 199 + measuredTemp ) / 200;
+
+            //volume correction
+            _simStateValues[5] = ( _simStateValues[5] * 199 + measuredVolume ) / 200;
+
+            //ethanol correction
+            _simStateValues[2] = ( _simStateValues[2] * 199 + measuredEthanol ) / 200;
+
+            //oxygen correction
+            _simStateValues[3] = (_simStateValues[3] * 199 + measuredOxygen ) / 200; ;
 
             // solve from now to 2 hours in the future
-            (_FutureSimTimes2Hours, _FutureSimValues2Hours) = RK45Solver(model: SimModel,
+
+
+
+            (List<double> TL, List<double[]> YL) = RK45Solver(model: SimModel,
                                          initialValues: _simStateValues,
                                          xStart: _tNow,
-                                         xEnd: _tNow + 2 * 3600,
-                                         tol: 1e-10);
+                                         xEnd: _tNow + 3600,
+                                         tol: 1e-8);
 
-            _tLast = _tNow;
+            _FutureSimTimes2Hours = TL.ToArray().ToList();
+
+            _FutureSimValues2Hours = YL.ToArray().ToList();
             SimulationStepFinished?.Invoke();
         }
+
 
         #region helper funtions for simulation model
         private double Arrhenius(double T) => _appSettings.SimSettings.ArrheniusA0 * Math.Exp(-_appSettings.SimSettings.ArrheniusEA / TSimulationSettings.GAS_CONSTANT / T);
@@ -133,10 +160,19 @@ namespace Core.Modules
         }
         #endregion
 
-
+        /// <summary>
+        /// The actual process model consisting of 6 coupled non-linear differential equations that take the system 
+        /// state as well as the control inputs into account. Control inputs are taken from the class variables as 
+        /// theese do not change that rapidly (at least in this model)
+        /// </summary>
+        /// <param name="x">the actual x or time value (not used in this case) (double)</param>
+        /// <param name="y">the actual state of the system (double[])</param>
+        /// <returns>the change in state (double[])</returns>
+        /// <exception cref="ArgumentException"> the number of states must be 6, otherwise something went wrong...</exception>
         private double[] SimModel(double x, double[] y) {
             if (y.Length != 6) { throw new ArgumentException($"Lenght of y must be 6! It is {y.Length}..."); }
 
+            // copy into new Varibales so that the names are easier to recognize in the calcuations
             double X  = y[0];
             double G  = y[1];
             double E  = y[2];
@@ -144,105 +180,84 @@ namespace Core.Modules
             double T  = y[4];
             double V  = y[5];
 
+
+            // calculate a temp correction factor based on the arrhenius equation
             double Ar = Arrhenius(T) * Sigmoid(T, 273.15 + 39, .5);
 
-            double m_ox = Monod(G, _appSettings.SimSettings.MueMaxOx) * Ar * Sigmoid(G, 0.05, 1000);
-            double m_red = Monod(G, _appSettings.SimSettings.MueMaxRed) * Ar * ( 1 - Sigmoid(G, 0.05, 1000) );
-            double m_eth = Monod(E, _appSettings.SimSettings.MueMaxEth) * Ar * ( 1 - Sigmoid(G, 0.05, 100) );
+            // oxygen consumption factor using a sigma so that oxygen consumpten is zero, when oxygen conectration is zero
+            double ox_factor = 1 - Sigmoid(O2, 0.0001, 40000);
 
-            double act_cool = 1 - Sigmoid(T, 30 + 273.15, 20);
-
-
-            double RE = V * X * ( m_ox / _appSettings.SimSettings.YieldGOx * ( -_appSettings.SimSettings.ReactionHeatOx ) 
-                                + m_red / _appSettings.SimSettings.YieldGRed * ( -_appSettings.SimSettings.ReactionHeatRed ) 
-                                + ( m_ox + m_red + m_eth ) * ( -_appSettings.SimSettings.ReactionHeatBiomass ) );
+            // calculate actual rate coefficients based on modified monod kinetics
+            double m_ox = Monod(G, _appSettings.SimSettings.MueMaxOx) * Ar * Sigmoid(G, 0.065, 500) * ox_factor;
+            double m_red = Monod(G, _appSettings.SimSettings.MueMaxRed) * Ar * ( 1 - Sigmoid(G, 0.065, 500) );
+            double m_eth = Monod(E, _appSettings.SimSettings.MueMaxEth) * Ar * ( 1 - Sigmoid(G, 0.065, 100) );
 
 
-            double dX = X * ( m_ox + m_red + m_eth ) - _acualFeedRate / V * X;
-            double dG = -X * ( m_ox / _appSettings.SimSettings.YieldGOx + m_red / _appSettings.SimSettings.YieldGRed ) + _acualFeedRate / V * ( _appSettings.SimSettings.FeedSugarConcentration - G );
-            double dE = X * ( m_red / _appSettings.SimSettings.YieldGRed - m_eth / _appSettings.SimSettings.YieldGRed ) - _acualFeedRate / V * E;
-            double dO2 = -X * ( _appSettings.SimSettings.RequiredOxygenOx * m_ox + _appSettings.SimSettings.RequiredOxygenRed * m_red ) - _acualFeedRate / V * O2;
-            double dT = _acualFeedRate / V * ( _appSettings.SimSettings.FeedTemp - T ) + RE / TSimulationSettings.WATER_SPECIFIC_HEAT / V + ( _appSettings.SimSettings.EnviromentTemp - T ) * CoolingSurface(V) * _appSettings.SimSettings.HeatTransferCoeffienctSteelAir / TSimulationSettings.WATER_SPECIFIC_HEAT / V + act_cool * _appSettings.SimSettings.CoolantFlow * TSimulationSettings.WATER_SPECIFIC_HEAT * ( _appSettings.SimSettings.CoolantTemp - T ) / TSimulationSettings.WATER_SPECIFIC_HEAT / V;
+
+            // active cooling emulating an active temp control (increasing coolant flow to maximum if temp > 30 °C)
+            double act_cool = 1 - Sigmoid(T, 303.15, 2);
+
+            // all reaction heat terms calculated and combined into a single value
+            double RE = V * X * ( 
+                            m_ox / _appSettings.SimSettings.YieldGOx * ( -_appSettings.SimSettings.ReactionHeatOx/ TSimulationSettings.GLUCOSE_MOLAR_WEIGTH ) 
+                          + m_red / _appSettings.SimSettings.YieldGRed * ( -_appSettings.SimSettings.ReactionHeatRed/ TSimulationSettings.GLUCOSE_MOLAR_WEIGTH ) 
+                          + ( m_ox + m_red + m_eth ) * ( -_appSettings.SimSettings.ReactionHeatBiomass ) );
+
+            // the actual 6 differential equations:
+            double dX = X * ( m_ox + m_red + m_eth ) 
+                        - _acualFeedRate / V * X;
+
+            double dG = -X * ( m_ox / _appSettings.SimSettings.YieldGOx + m_red / _appSettings.SimSettings.YieldGRed ) 
+                        + _acualFeedRate / V * ( _appSettings.SimSettings.FeedSugarConcentration - G );
+
+            double dE = X * ( m_red / _appSettings.SimSettings.YieldGRed - m_eth / _appSettings.SimSettings.YieldGRed ) 
+                        - _acualFeedRate / V * E;
+
+            double dO2 = -X * ( _appSettings.SimSettings.RequiredOxygenOx * m_ox + _appSettings.SimSettings.RequiredOxygenRed * m_red ) * ox_factor 
+                        - _acualFeedRate / V * O2           
+                        + _acualVentilationRate / V  * (0.012 - Math.Max(O2,0)) * 10;
+
+            double dT = _acualFeedRate / V * ( _appSettings.SimSettings.FeedTemp - T ) 
+                         + RE / TSimulationSettings.WATER_SPECIFIC_HEAT / V 
+                         + ( _appSettings.SimSettings.EnviromentTemp - T ) * CoolingSurface(V) * _appSettings.SimSettings.HeatTransferCoeffienctSteelAir / TSimulationSettings.WATER_SPECIFIC_HEAT / V 
+                         + act_cool * _appSettings.SimSettings.CoolantFlow * TSimulationSettings.WATER_SPECIFIC_HEAT * ( _appSettings.SimSettings.CoolantTemp - T ) / TSimulationSettings.WATER_SPECIFIC_HEAT / V;
+            
             double dV = _acualFeedRate;
 
             return new double[] { dX, dG, dE, dO2, dT, dV };
         }
 
         #region ODE Solvers
-        /// <summary>
-        /// Simple euler style ODE solver. Good enough for simple models if dx is small enough
-        /// </summary>
-        /// <param name="model">A Delegate or Func object containing the model to solve. It must accept a double(x) and a double array(y) and return a double array(dy)</param>
-        /// <param name="initalValues">The initial values that should be used when solving the ODE</param>
-        /// <param name="xStart">Start x value (or time), default = 0</param>
-        /// <param name="xEnd">End x value (or time), default = 100</param>
-        /// <param name="dx">The used delta x (the smaller, the better), default = 0.1</param>
-        /// <returns>A tuple of two arrays, the first containing the x values and the second containint arrays of y values (one for each x value)</returns>
-        private static (List<double>, List<double[]>) EulerSolver(Func<double, double[], double[]> model, double[] initalValues, double xEnd = 100, double dx = 0.1, double xStart = 0 ) {
-            List<double> xValues = new();
-            List<double[]> yValues = new();
-            double[] dy;
-            double[] y = (double[])initalValues.Clone();
-            for (double x = xStart; x <= xEnd; x += dx) {
-                xValues.Add(x);
-                yValues.Add((double[]) y.Clone());
-
-                dy = model(x, y);
-
-                y = AddArrays(ScaleArray(dy, dx), y);
-
-            }
-            return (xValues, yValues);
-        }
 
         /// <summary>
-        /// Runge-Kutta (RK4) ODE solver. Good enough for most simple tasks
+        /// Same as ode45 solver but only returns last element and no time or x values (since there would only be one)
         /// </summary>
         /// <param name="model">A Delegate or Func object containing the model to solve. It must accept a double(x) and a double array(y) and return a double array(dy)</param>
-        /// <param name="initalValues">The initial values that should be used when solving the ODE</param>
-        /// <param name="xStart">Start x value (or time), default = 0</param>
+        /// <param name="initialValues">The initial values that should be used when solving the ODE</param>
         /// <param name="xEnd">End x value (or time), default = 100</param>
-        /// <param name="dx">The used delta x (the smaller, the better), default = 0.1</param>
-        /// <returns>A tuple of two arrays, the first containing the x values and the second containint arrays of y values (one for each x value)</returns>
-        private static (List<double>, List<double[]>) RK4Solver(Func<double, double[], double[]> model, double[] initialValues, double xEnd = 100, double dx = 0.1, double xStart = 0) {
-            List<double> xValues = new();
-            List<double[]> yValues = new();
-
-            double[] y = (double[]) initialValues.Clone();
-
-            for (double x = xStart; x < xEnd; x += dx) {
-                xValues.Add(x);
-                yValues.Add((double[]) y.Clone());
-
-                double[] k1 = model(x, y);
-                double[] k2 = model(x + 0.5 * dx, AddArrays(y, ScaleArray(k1, 0.5 * dx)));
-                double[] k3 = model(x + 0.5 * dx, AddArrays(y, ScaleArray(k2, 0.5 * dx)));
-                double[] k4 = model(x + dx, AddArrays(y, ScaleArray(k3, dx)));
-
-                for (int i = 0; i < y.Length; i++) {
-                    y[i] += ( k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i] ) * dx / 6.0;
-                }
-            }
-
-            return (xValues, yValues);
+        /// <param name="tol"></param>
+        /// <param name="xStart">Start x value (or time), default = 0</param>
+        /// <returns>An arry containing the state at the last point in time (or x)</returns>
+        private (double, double[]) RK45SolverLast(Func<double, double[], double[]> model, double[] initialValues, double xEnd = 100, double tol = 1e-6, double xStart = 0) {
+            (List<double> X, List<double[]> Y) = RK45Solver(model, initialValues, xEnd, tol, xStart);
+            return (X.Last(),(double[]) Y.Last().Clone());
         }
-
 
         /// <summary>
         /// Variable step size ODE solver based on Dormand-Prince pair (RK4 and RK4) to determine step size. Fast solver suitable for almost all models.
         /// </summary>
         /// <param name="model">A Delegate or Func object containing the model to solve. It must accept a double(x) and a double array(y) and return a double array(dy)</param>
-        /// <param name="initalValues">The initial values that should be used when solving the ODE</param>
+        /// <param name="initialValues">The initial values that should be used when solving the ODE</param>
         /// <param name="xStart">Start x value (or time), default = 0</param>
         /// <param name="xEnd">End x value (or time), default = 100</param>
-        /// <param name="dx">The used delta x (the smaller, the better), default = 0.1</param>
+        /// <param name="tol">The tolerance which is used to increas or deacrese the step size</param>
         /// <returns>A tuple of two arrays, the first containing the x values and the second containint arrays of y values (one for each x value)</returns>
-        private static (List<double>, List<double[]>) RK45Solver(Func<double, double[], double[]> model, double[] initialValues, double xEnd = 100, double tol = 1e-6, double xStart = 0) {
+        private (List<double>, List<double[]>) RK45Solver(Func<double, double[], double[]> model, double[] initialValues, double xEnd = 100, double tol = 1e-6, double xStart = 0) {
             List<double> xValues = new();
             List<double[]> yValues = new();
 
             double[] y = (double[]) initialValues.Clone();
-            double dx = 0.1;  // Initial step size
+            double dx = 0.1;  // Initial step size in seconds
             bool errorTooLarge = false;
             double x = xStart;
             while (x < xEnd) {
@@ -274,17 +289,39 @@ namespace Core.Modules
                 errorTooLarge = true;
                 if (error <= tol) {
                     y = y_new;
+                    _acualFeedRate += _acualFeedRate * _appSettings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement * dx/3600;
                     x += dx;
                     errorTooLarge = false;
                 }
 
                 dx *= Math.Pow(tol / ( error + 1e-10 ), 0.25);
             }
+            x = xValues.Last();
+            y = yValues.Last();
+            if (x < xEnd) {
+                dx = xEnd - x;
+                _acualFeedRate += _acualFeedRate * _appSettings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement * dx / 3600;
+                double[] k1 = model(x, y);
+                double[] k2 = model(x + 0.25 * dx, AddArrays(y, ScaleArray(k1, 0.25 * dx)));
+                double[] k3 = model(x + 3.0 / 8.0 * dx, AddArrays(y, AddArrays(ScaleArray(k1, 3.0 / 32.0 * dx), ScaleArray(k2, 9.0 / 32.0 * dx))));
+                double[] k4 = model(x + 12.0 / 13.0 * dx, AddArrays(y, AddArrays(AddArrays(ScaleArray(k1, 1932.0 / 2197.0 * dx), ScaleArray(k2, -7200.0 / 2197.0 * dx)), ScaleArray(k3, 7296.0 / 2197.0 * dx))));
+                double[] k5 = model(x + dx, AddArrays(y, AddArrays(AddArrays(ScaleArray(k1, 439.0 / 216.0 * dx), ScaleArray(k2, -8.0 * dx)), AddArrays(ScaleArray(k3, 3680.0 / 513.0 * dx), ScaleArray(k4, -845.0 / 4104.0 * dx)))));
+                
+                double[] y_new = new double[y.Length];
+
+                for (int i = 0; i < y.Length; i++) {
+                    y_new[i] = y[i] + ( 25.0 / 216.0 * k1[i] + 1408.0 / 2565.0 * k3[i] + 2197.0 / 4104.0 * k4[i] - 0.2 * k5[i] ) * dx;
+                    
+                }
+                xValues.Add(xEnd);
+                yValues.Add((double[]) y_new.Clone());
+            }
+
+
 
             return (xValues, yValues);
         }
-        
-        
+
         private static double[] AddArrays(double[] a, double[] b) {
             if (a.Length != b.Length) {
                 throw new ArgumentException("Arrays must be of the same length");

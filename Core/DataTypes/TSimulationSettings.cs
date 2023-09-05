@@ -12,6 +12,7 @@
         public double StartBio { get; set; } = 10; // g/L 
         public double StartSugar { get; set; } = 0; // g/L
         public double StartV { get; set; } = 450; // L
+        public double StartTemp { get; set; } = 300; // L
         public double MaxV { get; set; } = 1200; // L
         public double MueMaxOx { get; set; } = 0.17 / 3600;
         public double MueMaxRed { get; set; } = 0.30 / 3600;

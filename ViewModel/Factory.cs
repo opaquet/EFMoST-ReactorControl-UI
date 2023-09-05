@@ -14,7 +14,35 @@ namespace ViewModel {
         }
 
         public static SimulationViewModel CreateSimulationViewModel(IProcessSimulation procSim) {
-            return new(procSim);
+            List<ValueViewModel> viewModels = new List<ValueViewModel>() {
+                new(name: "Biomasse", unit: "g/L", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.5, decimalPlaces: 1,
+                    baseValueUpdateAction: (v) => procSim.Biomass = v ),
+                new(name: "Zucker", unit: "g/L", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.05, decimalPlaces: 3,
+                    baseValueUpdateAction: (v) => procSim.Sugar = v ),
+                new(name: "Ethanol", unit: "g/L", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.05, decimalPlaces: 2,
+                    baseValueUpdateAction: (v) => procSim.Ethanol = v ),
+                new(name: "gel. Sauerstoff", unit: "mg/L", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.5, decimalPlaces: 2,
+                    baseValueUpdateAction: (v) => procSim.Oxygen = v ),
+                new(name: "Temperatur", unit: "°C", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.5, decimalPlaces: 2,
+                    baseValueUpdateAction: (v) => procSim.Temperature = v ),
+                new(name: "Füllstand", unit: "L", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 1, decimalPlaces: 0,
+                    baseValueUpdateAction: (v) => procSim.Volume = v ),
+            };
+
+            Action handler = () => { viewModels[0].SetValue(procSim.Biomass); };
+            SubscribeToSimulationCycleUpdate(procSim, handler);
+            handler = () => { viewModels[1].SetValue(procSim.Sugar); };
+            SubscribeToSimulationCycleUpdate(procSim, handler);
+            handler = () => { viewModels[2].SetValue(procSim.Ethanol); };
+            SubscribeToSimulationCycleUpdate(procSim, handler);
+            handler = () => { viewModels[3].SetValue(procSim.Oxygen); };
+            SubscribeToSimulationCycleUpdate(procSim, handler);
+            handler = () => { viewModels[4].SetValue(procSim.Temperature); };
+            SubscribeToSimulationCycleUpdate(procSim, handler);
+            handler = () => { viewModels[5].SetValue(procSim.Volume); };
+            SubscribeToSimulationCycleUpdate(procSim, handler);
+
+            return new(procSim, viewModels);
         }
 
         public static LogStringViewModel CreateLogViewModel(IEventLogger? log, int width) {
@@ -99,7 +127,7 @@ namespace ViewModel {
                 new(name:"Ethanol Soll",unit:"g/L",maxValue:20, decimalPlaces: 1, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
                     value: manager.settings.ReactorControlSettings.FeedControlSettings.EthanolTargetConcentration, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.FeedControlSettings.EthanolTargetConcentration = v),
-                new(name:"Ausgabe",unit:"/h",maxValue:1, decimalPlaces: 2, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
+                new(name:"Ausgabe",unit:"L/h",maxValue:200, decimalPlaces: 2, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.1,
                     value: manager.reactorControl.CalculatedFeedRateValue, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.reactorControl.SetFeedRate(v)),
                 //belüftungsregelung
@@ -115,7 +143,7 @@ namespace ViewModel {
                 new(name:"kD",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
                     value : manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kd, changeAllowed:true,
                     baseValueUpdateAction: (v) => manager.settings.ReactorControlSettings.VentilationControlSettings.PID_kd = v),
-                new(name:"Ausgabe",unit:"L/min",maxValue:100,decimalPlaces: 1, 
+                new(name:"Ausgabe",unit:"L/min",maxValue:200,decimalPlaces: 1, 
                     value: manager.reactorControl.CalculatedVentilationValue, changeAllowed:false),
                 //tempregelung
                 new(name:"kP",unit:"",maxValue:1000, decimalPlaces: 2, changeType: ValueChangeType.MultiplyAndDivide, changeAmount: 1.1,
@@ -350,6 +378,12 @@ namespace ViewModel {
             manager.reactorControl.ControlCycleFinished += handler;
             _controlCycleUpdateHandlers.Add(handler);
         }
+
+        private static void SubscribeToSimulationCycleUpdate(IProcessSimulation? procSim, Action handler) {
+            procSim.SimulationStepFinished += handler;
+            _simCycleUpdateHandlers.Add(handler);
+        }
+
         private static void SubscribeToGasSensorDataUpdate(Manager? manager, Action<TGasSensorData> handler) {
             manager.GasSensorDataUpdate += handler;
             _gasSensorDataUpdateHandlers.Add(handler);
@@ -368,6 +402,7 @@ namespace ViewModel {
             _computedDataUpdateHandlers.ForEach((handler) => manager.dataStore.GasSensorCycleComplete -= handler);
             _gasSensorDataUpdateHandlers.ForEach((handler) => manager.GasSensorDataUpdate -= handler);
             _controlCycleUpdateHandlers.ForEach((handler) => manager.reactorControl.ControlCycleFinished -= handler);
+            _simCycleUpdateHandlers.ForEach((handler) => manager.processSimulator.SimulationStepFinished -= handler);
         }
 
         private static void EnsureNotNull(object? value, string name) {
@@ -380,6 +415,7 @@ namespace ViewModel {
         private static List<Action<TComputedValuesData>> _computedDataUpdateHandlers = new();
         private static List<Action<TGasSensorData>> _gasSensorDataUpdateHandlers = new();
         private static List<Action> _controlCycleUpdateHandlers = new();
+        private static List<Action> _simCycleUpdateHandlers = new();
     }
     #pragma warning restore CS8602 // Dereferenzierung eines möglichen Nullverweises.
 }

@@ -10,6 +10,11 @@ namespace Core.Modules
 
         private Action<string>? _sendCommandToControllerMCU;
 
+        private ProcessControlDataSource dataSource { get => _settings.AutomaticProcessControlDataSource; }
+
+        private IProcessSimulation _sim;
+
+
         private TReactorControlSettings _settings;
         private Timer? _controlIntervalTimer;
         private Timer? _pwmFeedControlOffTimer;
@@ -65,6 +70,10 @@ namespace Core.Modules
             _dataHandler = dataHandler;
         }
 
+        public void SetSimlation(IProcessSimulation sim) {
+            _sim = sim;
+        }
+
         public void Begin() {
             LogEvent?.Invoke("ControlModule started!", 1);
             StartupEvent?.Invoke("resetting controlIntervalTimer...");
@@ -97,7 +106,19 @@ namespace Core.Modules
                 if (CheckControlDeviation(CalculatedFeedRateValue, CurrentFeedRateValue)) {
                     //LogEvent?.Invoke($"Warning: Requested feedrate ({CalculatedFeedRateValue:N1} L/h) differs from reported feedrate ({CurrentFeedRateValue:N1} L/h) by more than 10 %!", 0);
                 }
-                UpdateFeedRateControlOutput(dt);
+
+                switch (dataSource) {
+                    case ProcessControlDataSource.Measurement:
+                        UpdateFeedRateControlOutputFromMeasurement(dt);
+                        break;
+                    case ProcessControlDataSource.Simulation:
+                        UpdateFeedRateControlOutputFromSimulation(dt);
+                        break;
+                    default:
+                        break;
+                }
+
+
                 SendFeedRateToController(CalculatedFeedRateValue); 
             }
             // pid ventilation control based on dissolved oxygen
@@ -139,7 +160,7 @@ namespace Core.Modules
             _tempPIDSaturated = ( CalculatedTempControlSeeting != PIDOutputValue );
         }
 
-        private void UpdateFeedRateControlOutput(double dt) {
+        private void UpdateFeedRateControlOutputFromMeasurement(double dt) {
             if (ReactorEthanolConcentration > _settings.FeedControlSettings.EthanolTargetConcentration) {
                 if (!_feedRateRetracted) {
                     _feedRateRetracted = true;
@@ -156,8 +177,32 @@ namespace Core.Modules
             CalculatedFeedRateValue = Math.Min(CalculatedFeedRateValue, _settings.FeedControlSettings.MaxFeedRateLPerH);
         }
 
+        private double GSum = 0;
+
+        private void UpdateFeedRateControlOutputFromSimulation(double dt) {
+
+            double deltaG = 0.05 - _sim.Sugar;
+            GSum += deltaG * dt;
+            CalculatedFeedRateValue = deltaG * 200 + GSum * 1220;
+
+            GSum = Math.Max(0,GSum);
+
+            CalculatedFeedRateValue = Math.Min(CalculatedFeedRateValue, _settings.FeedControlSettings.MaxFeedRateLPerH);
+        }
+
         private void UpdateVentilationControlOutput(double dt) {
-            _vPIDErrors[0] = _settings.VentilationControlSettings.OxygenTargetConcentration - ReactorDissolvedOxygenConcentration;
+
+            switch (dataSource) {
+                case ProcessControlDataSource.Measurement:
+                    _vPIDErrors[0] = _settings.VentilationControlSettings.OxygenTargetConcentration - ReactorDissolvedOxygenConcentration;
+                    break;
+                case ProcessControlDataSource.Simulation:
+                    _vPIDErrors[0] = _settings.VentilationControlSettings.OxygenTargetConcentration - _sim.Oxygen;
+                    break;
+                default:
+                    break;
+            }
+
             _vPIDErrors[1] += _vPIDSaturated ? 0 : _vPIDErrors[0] * dt;
             _vPIDErrors[1] = Math.Max(0, _vPIDErrors[1]); // integral term should not be less than zero
             _vPIDErrors[2] = (_vPIDLastError - _vPIDErrors[0]) / dt;
@@ -211,19 +256,15 @@ namespace Core.Modules
 
                 int onTime = (int)( onTimeFactor * onTimeFraction );
                 //turn controlinput on
-                _sendCommandToControllerMCU("!SA(4,1)\n");
-                _sendCommandToControllerMCU($"!SP(3,{actualPWMfeedrateoutput})\n");
-                _sendCommandToControllerMCU("!AI\n");
+                string activateString = IsFeedControlActive ? "" : "SA(4,1);";
+                _sendCommandToControllerMCU($"!{activateString}SP(3,{actualPWMfeedrateoutput});AI\n");
                 // Timer to turn controlinput off after duty cycle
                 _pwmFeedControlOffTimer?.Dispose();
                 _pwmFeedControlOffTimer = new Timer(PwmFeedControlOffTimerCallback, null, onTime, Timeout.Infinite);
             } else {
                 // turn feed control to active if it is set to off for whatever reason
-                if (!IsFeedControlActive) {
-                    _sendCommandToControllerMCU("!SA(4,1)\n");
-                }
-                _sendCommandToControllerMCU($"!SP(3,{Convert.ToInt32(feedrate10bitValue)})\n");
-                _sendCommandToControllerMCU("!AI\n");
+                string activateString = IsFeedControlActive ? "" : "SA(4,1);";
+                _sendCommandToControllerMCU($"!{activateString}SP(3,{Convert.ToInt32(feedrate10bitValue)});AI\n");
             }
         }
 
@@ -282,9 +323,7 @@ namespace Core.Modules
         /// <param name="state"></param>
         private void PwmFeedControlOffTimerCallback(object? state) {
             if (_sendCommandToControllerMCU == null) { return; }
-            _sendCommandToControllerMCU("!SA(4,0)\n");
-            _sendCommandToControllerMCU($"!SP(3,0)\n");
-            _sendCommandToControllerMCU("!AI\n");
+            _sendCommandToControllerMCU($"!SA(4,0);SP(3,0);AI\n");
             try {
                 ControlCycleFinished?.Invoke();
             } catch (Exception ex) { LogEvent?.Invoke($"Error updating UI: {ex.Message}", 0); }
@@ -300,11 +339,8 @@ namespace Core.Modules
             if (!IsVentilationAutomationActive) { return; }
             if (_sendCommandToControllerMCU == null) { LogEvent?.Invoke($"Error sending Command: _sendCommandToControllerMCU delegate is null!", 0); return; }
             int ventilation10bitValue = CalculateActualVentilation(VentilationLPerMin);
-            if (!IsVentilationControlActive) { 
-                _sendCommandToControllerMCU("!SA(3,1)\n");
-            }
-            _sendCommandToControllerMCU($"!SP(2,{ventilation10bitValue})\n");
-            _sendCommandToControllerMCU("!AI\n");
+            string activateString = IsVentilationControlActive ? "" : "SA(3,1);";
+            _sendCommandToControllerMCU($"!{activateString}SP(2,{ventilation10bitValue});AI\n");
         }
 
         /// <summary>
@@ -334,22 +370,20 @@ namespace Core.Modules
 
             int onTime = (int) ( onTimeFraction * _settings.ReactorControlTimerIntervalMilliseconds);
             //turn controlinput on if off
-            if (!IsTemperatureControlActive) {
-                _sendCommandToControllerMCU("!SA(5,1)\n");
-            }
+
+            string activateString = IsTemperatureControlActive ? "" : "SA(5,1);";
 
             // open valves (by setting setpoint low) 
             if (onTime < 500) { //if duty cycle is less than 5% dont bother turning on
                 if (ReactorTemperatureSetpoint != 40) {// but first check if valve is closed. close valve if it is open...
-                    _sendCommandToControllerMCU($"!SP(4,400)\n");
-                    _sendCommandToControllerMCU("!AI\n");
+                    _sendCommandToControllerMCU($"!{activateString}SP(4,400);AI\n");
                 }
 
                 CalculatedTempValveSetting = false;
                 return;
             }
-            _sendCommandToControllerMCU($"!SP(4,0)\n");
-            _sendCommandToControllerMCU("!AI\n");
+            _sendCommandToControllerMCU($"!{activateString}SP(4,0);AI\n");
+
             CalculatedTempValveSetting = true;
 
             // Timer to close valves (by setting setpoint high) after duty cycle
@@ -364,8 +398,7 @@ namespace Core.Modules
         /// <param name="state"></param>
         private void PwmTempControlOffTimerCallback(object? state) {
             if (_sendCommandToControllerMCU == null) { return; }
-            _sendCommandToControllerMCU($"!SP(4,400)\n");
-            _sendCommandToControllerMCU("!AI\n");
+            _sendCommandToControllerMCU($"!SP(4,400);AI\n");
             CalculatedTempValveSetting = false;
             try {
                 ControlCycleFinished?.Invoke();

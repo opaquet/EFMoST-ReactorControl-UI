@@ -82,8 +82,10 @@ namespace Core
                 : (IReactorControl)new ReactorControl(reactorControlSettings, (msg) => device.SendCommand(msg), dataStore);
         }
 
-        internal static IProcessSimulation CreateProcessSimulation(IAppSettings? appSettings, IDataHandler? dataHandler) {
-            return new ProcessSimulation(appSettings, dataHandler);
+        internal static IProcessSimulation CreateProcessSimulation(IAppSettings? appSettings, IDataHandler? dataStore, IReactorControl? reactorControl) {
+            return ( dataStore == null ) || ( appSettings == null ) || ( reactorControl == null )
+                ? throw new NullReferenceException()
+                : (IProcessSimulation) new ProcessSimulation(appSettings, dataStore, reactorControl);
         }
 
         private static void EnsureLogDirectoryExists(string logDirectory) {

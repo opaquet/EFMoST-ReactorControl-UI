@@ -9,22 +9,19 @@ namespace Core.Modules.Interfaces
         event Action SimulationStepFinished;
 
 
-        double[] SimTime { get; }
-        double[] SimTimeFuture { get; }
-        double[] SimBiomass { get; }
-        double[] SimBiomassFuture { get; }
-        double[] SimGlucose { get ; }
-        double[] SimGlucoseFuture { get; }
-        double[] SimEthanol { get; }
-        double[] SimEthanolFuture { get; }
-        double[] SimOxygen { get; }
-        double[] SimOxygenFuture { get; }
-        double[] SimTemperature { get; }
-        double[] SimTemperatureFuture { get; }
-        double[] SimVolume { get; }
-        double[] SimVolumeFuture { get; }
+        IReadOnlyList<double> SimTimeValues { get; }
+        IReadOnlyList<double> SimTimePredictions { get; }
+        IReadOnlyList<double[]> SimStateValues { get; }
+        IReadOnlyList<double[]> SimStatePredictions { get; }
 
-
+        double Biomass { get; set; }
+        double Sugar { get; set; }
+        double Ethanol { get; set; }
+        double Oxygen { get; set; }
+        double Temperature { get; set; }
+        double Volume { get; set; }
+        double DeltaTime { get; }
+        double TotalFeedVolume { get; }
         public void Begin();
     }
 }

@@ -12,7 +12,10 @@ namespace ViewModel
         public event Action<string>? InitProgressInc;
 
         private Core.Manager? _coreManger;
-        public ProcessControlDataSource AutomaticControlDataSource { get; set; } = ProcessControlDataSource.Measurement;
+        public ProcessControlDataSource AutomaticControlDataSource { 
+            get => _coreManger.settings.ReactorControlSettings.AutomaticProcessControlDataSource;
+            set => _coreManger.settings.ReactorControlSettings.AutomaticProcessControlDataSource = value;
+        }
         public DeviceViewModel? GasSensor { get; private set; }
         public ValueViewModel? GasSensorStateValue { get; private set; }
         public DeviceViewModel? Controller { get; private set; }

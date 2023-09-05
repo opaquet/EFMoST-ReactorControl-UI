@@ -53,11 +53,13 @@ namespace ViewModel.ViewModels {
             switch (ChangeType) {
                 case ValueChangeType.AddAndSubtract:
                     Value += ChangeAmount;
+                    
                     break;
                 case ValueChangeType.MultiplyAndDivide:
                     Value *= ChangeAmount;
                     break;
             }
+            Value = Math.Min(MaxValue, Value);
             _changeBaseValue?.Invoke(Value);
         }
         public void Decrease() {
@@ -69,6 +71,7 @@ namespace ViewModel.ViewModels {
                     Value /= ChangeAmount;
                     break;
             }
+            Value = Math.Max(MinValue, Value);
             _changeBaseValue?.Invoke(Value);
         }
 

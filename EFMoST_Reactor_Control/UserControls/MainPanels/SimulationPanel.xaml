@@ -15,6 +15,8 @@
                 <RowDefinition Height="10"/>
                 <RowDefinition Height="1*"/>
                 <RowDefinition Height="10"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="10"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="10"/>
@@ -29,42 +31,46 @@
                 </TextBlock.Effect>
             </TextBlock>
 
-            <Border Background="#fafafa" CornerRadius="30" Grid.Column="1" Grid.RowSpan="3" Grid.Row="1" >
+            <Border Background="#fafafa" CornerRadius="30" Grid.Column="1" Grid.RowSpan="5" Grid.Row="1" >
                 <Border.Effect>
                     <DropShadowEffect ShadowDepth="1"/>
                 </Border.Effect>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="40"/>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="30"/>
                         <RowDefinition Height="1*"/>
                         <RowDefinition Height="1*"/>
                         <RowDefinition Height="1*"/>
-                        <RowDefinition Height="1*"/>
-                        <RowDefinition Height="1*"/>
-                        <RowDefinition Height="1*"/>
-                        <RowDefinition Height="1*"/>
-                        <RowDefinition Height="100"/>
-                        <RowDefinition Height="100"/>
-                        <RowDefinition Height="100"/>
+                        <RowDefinition Height="2*"/>
+                        <RowDefinition Height="2*"/>
+                        <RowDefinition Height="2*"/>
                         <RowDefinition Height="10"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="3*"/>
                         <ColumnDefinition Width="1*"/>
-                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="3*"/>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="10"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Simulation:" FontSize="16" Grid.Row="0" VerticalAlignment="Center" Grid.Column="1" Grid.ColumnSpan="3"/>
+                    <TextBlock x:Name="labelDt" Text="dt =" FontSize="16" Grid.Row="1" VerticalAlignment="Center" Grid.Column="1" Grid.ColumnSpan="3"/>
+                    <TextBlock x:Name="labelTotalt" Text="total t =" FontSize="16" Grid.Row="1" VerticalAlignment="Center" Grid.Column="3" Grid.ColumnSpan="3"/>
 
+                    <TextBlock x:Name="labelFeedV" Text="Feed Gesamtvolumen =" FontSize="16" Grid.Row="2" VerticalAlignment="Center" Grid.Column="1" Grid.ColumnSpan="3"/>
+                    <TextBlock x:Name="labelFeedG" Text="Feed Gesamtzucker =" FontSize="16" Grid.Row="3" VerticalAlignment="Center" Grid.Column="1" Grid.ColumnSpan="3"/>
 
-                    <local:UpDownButton Grid.Column="1" Grid.Row="8" />
-                    <local:UpDownButton Grid.Column="3" Grid.Row="8" />
-                    <local:UpDownButton Grid.Column="1" Grid.Row="9" />
-                    <local:UpDownButton Grid.Column="3" Grid.Row="9" />
-                    <local:UpDownButton Grid.Column="1" Grid.Row="10" />
-                    <local:UpDownButton Grid.Column="3" Grid.Row="10" />
+                    <local:UpDownButton Grid.Column="1" Grid.Row="8" DataContext="{Binding Simulation.Biomass}"/>
+                    <local:UpDownButton Grid.Column="3" Grid.Row="8" DataContext="{Binding Simulation.Sugar}"/>
+                    <local:UpDownButton Grid.Column="1" Grid.Row="9" DataContext="{Binding Simulation.Ethanol}"/>
+                    <local:UpDownButton Grid.Column="3" Grid.Row="9" DataContext="{Binding Simulation.Oxygen}" />
+                    <local:UpDownButton Grid.Column="1" Grid.Row="10" DataContext="{Binding Simulation.Temperature}" />
+                    <local:UpDownButton Grid.Column="3" Grid.Row="10" DataContext="{Binding Simulation.Volume}" />
 
                 </Grid>
             </Border>
@@ -98,6 +104,21 @@
                     </VisualBrush>
                 </Border.OpacityMask>
                 <sp:WpfPlot x:Name="XYPlot2"/>
+            </Border>
+            <Border x:Name="OuterBorder3" Background="#fafafa" CornerRadius="30" Grid.Column="3" Grid.Row="5">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="1"/>
+                </Border.Effect>
+                <Border.OpacityMask>
+                    <VisualBrush>
+                        <VisualBrush.Visual>
+                            <Border Width="{Binding ActualWidth, ElementName=OuterBorder3, Mode=OneWay}" 
+                                    Height="{Binding ActualHeight, ElementName=OuterBorder3, Mode=OneWay}" 
+                                    Background="Black" CornerRadius="20"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <sp:WpfPlot x:Name="XYPlot3"/>
             </Border>
         </Grid>
 

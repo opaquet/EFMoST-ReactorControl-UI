@@ -39,8 +39,7 @@ namespace Core
             while (( !devHandler?.IsConnectionAttemptFinished[0] ?? false ) && ( !devHandler?.IsConnectionAttemptFinished[1] ?? false )) {
                 Thread.Sleep(100);
             }
-            InitializeReactorControlModule(60);
-            InitializeProcessSimulationModule(75);
+            InitializeReactorControlAndSimModule(60);
 
 
 
@@ -73,20 +72,19 @@ namespace Core
             dataStore.StartupEvent += InitializationIncProgress;
             dataStore.Begin();
         }
-        private void InitializeReactorControlModule(int progress) {
-            InitializationProgress?.Invoke(progress, "Starting ControlModule...", "");
+        private void InitializeReactorControlAndSimModule(int progress) {
+            InitializationProgress?.Invoke(progress, "Starting Control & Sim Module...", "");
             reactorControl = Factory.CreateReactorControl(settings?.ReactorControlSettings, devHandler?.Devices[1], dataStore);
+            processSimulator = Factory.CreateProcessSimulation(settings, dataStore, reactorControl);
+            reactorControl.SetSimlation(processSimulator);
             reactorControl.LogEvent += (msg, logLevel) => appEventLog?.Append(msg, " ControlModule", logLevel);
             reactorControl.StartupEvent += InitializationIncProgress;
             reactorControl.Begin();
-        }
-        private void InitializeProcessSimulationModule(int progress) {
-            InitializationProgress?.Invoke(progress, "Starting SimModule...", "");
-            processSimulator = Factory.CreateProcessSimulation(settings, dataStore);
             processSimulator.LogEvent += (msg, logLevel) => appEventLog?.Append(msg, " SimModule", logLevel);
             processSimulator.StartupEvent += InitializationIncProgress;
             processSimulator.Begin();
         }
+
         private void InitializeDeviceHandlerModule(int progress) {
             InitializationProgress?.Invoke(progress, "Starting DeviceHandler...", "");
             deviceLogs = Factory.CreateAllEventLoggers();
