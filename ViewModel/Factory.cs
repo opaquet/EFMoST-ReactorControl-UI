@@ -15,7 +15,7 @@ namespace ViewModel {
 
         public static SimulationViewModel CreateSimulationViewModel(IProcessSimulation procSim) {
             List<ValueViewModel> viewModels = new List<ValueViewModel>() {
-                new(name: "Biomasse", unit: "g/L", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.5, decimalPlaces: 1,
+                new(name: "Biomasse", unit: "g/L", maxValue: 300, changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.5, decimalPlaces: 1,
                     baseValueUpdateAction: (v) => procSim.Biomass = v ),
                 new(name: "Zucker", unit: "g/L", changeAllowed: true, changeType: ValueChangeType.AddAndSubtract, changeAmount: 0.05, decimalPlaces: 3,
                     baseValueUpdateAction: (v) => procSim.Sugar = v ),
@@ -90,7 +90,6 @@ namespace ViewModel {
                 ? throw new NullReferenceException()
                 : new(dev, CreateLogViewModel(log, 7));
         }
-
 
         public static ValueViewModel CreateIndicatorDirectControlViewModel(Manager? manager) {
             EnsureNotNull(manager, nameof(manager));

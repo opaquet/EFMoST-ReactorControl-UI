@@ -1,4 +1,5 @@
 ﻿using ScottPlot;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -54,8 +55,8 @@ namespace UI.UserControls.MainPanels {
                 xvals = xvals.Select(v => v / 3600).ToArray();
                 xvalsP = xvalsP.Select(v => v / 3600).ToArray();
 
-                List<double[]> yvals = viewModel.Simulation.State;
-                List<double[]> yvalsP = viewModel.Simulation.StateFuture;
+                List<double[]> yvals = new(viewModel.Simulation.State);
+                List<double[]> yvalsP = new(viewModel.Simulation.StateFuture);
 
                 XYPlot1.Plot.Clear();
                 XYPlot1.Plot.AddScatter(xvals, yvals[0], label: viewModel.Simulation.Names[0], color: Color.Red);
@@ -82,17 +83,19 @@ namespace UI.UserControls.MainPanels {
                 XYPlot3.Plot.XAxis.Label("Zeit /h");
                 XYPlot3.Plot.YAxis.Label("Temperatur °C");
 
-                Dispatcher.BeginInvoke(() => {
+                Dispatcher.Invoke(() => {
                     XYPlot1.Refresh();
                     XYPlot2.Refresh();
                     XYPlot3.Refresh();
                 });
-            } catch { }
+            } catch (Exception ex) {
+                Console.WriteLine(ex);
+            }
         }
 
         private void UpdateText() {
             try {
-                Dispatcher.BeginInvoke(() => {
+                Dispatcher.Invoke(() => {
                     labelDt.Text = $"dt = {( viewModel.Simulation.DeltaTime * 1000 ):F0} ms";
                     labelTotalt.Text = $"total t = {t:F0} s";
 
