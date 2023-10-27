@@ -42,6 +42,9 @@ namespace Core.Modules
         public bool CalculatedTempValveSetting { get; set; } = false;
         public double CalculatedTempControlSeeting { get; set; } = 0;
 
+        public double[] PidParametersTemperature { get => (double[])_tempPIDErrors.Clone(); }
+        public double[] PidParametersVentilation { get => (double[]) _vPIDErrors.Clone(); }
+
 
         // properties for current reactor state, all read from the _dataHandler (coming from the plc)
         private double CurrentFeedRateValue { get => _dataHandler.GetLastControllerDatum().Values[MeasurementValue.Feedrate]; }
@@ -81,6 +84,15 @@ namespace Core.Modules
             StartupEvent?.Invoke("starting controlIntervalTimer...");
             _controlIntervalTimer = new Timer(ControlTimerCallback, null, 0, _settings.ReactorControlTimerIntervalMilliseconds);
         }
+
+        public void ResetTempPID() {
+            _tempPIDErrors[1] = 0;
+        }
+
+        public void ResetVentillationPID() {
+            _vPIDErrors[1] = 0;
+        }
+
 
         public void Dispose() {
             LogEvent?.Invoke("ControlModule stopped!", 1);
@@ -186,12 +198,13 @@ namespace Core.Modules
             CalculatedFeedRateValue = deltaG * 200 + GSum * 1220;
 
             GSum = Math.Max(0,GSum);
+            CalculatedFeedRateValue = Math.Max(0, CalculatedFeedRateValue);
 
             CalculatedFeedRateValue = Math.Min(CalculatedFeedRateValue, _settings.FeedControlSettings.MaxFeedRateLPerH);
         }
 
         private void UpdateVentilationControlOutput(double dt) {
-
+            _vPIDSaturated = CalculatedVentilationValue > CurrentVentilationValue + 10; // Actual ventilation (max depnds on air pressure) can not folow desired ventilation output (up to 400 L/min)
             switch (dataSource) {
                 case ProcessControlDataSource.Measurement:
                     _vPIDErrors[0] = _settings.VentilationControlSettings.OxygenTargetConcentration - ReactorDissolvedOxygenConcentration;

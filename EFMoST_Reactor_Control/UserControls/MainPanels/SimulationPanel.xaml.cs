@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Controls;
 using ViewModel;
 
@@ -83,6 +84,16 @@ namespace UI.UserControls.MainPanels {
                 XYPlot3.Plot.XAxis.Label("Zeit /h");
                 XYPlot3.Plot.YAxis.Label("Temperatur °C");
 
+                XYPlot1.Configuration.Pan = false;
+                XYPlot1.Configuration.Zoom = false;
+
+                XYPlot2.Configuration.Pan = false;
+                XYPlot2.Configuration.Zoom = false;
+
+                XYPlot3.Configuration.Pan = false;
+                XYPlot3.Configuration.Zoom = false;
+
+
                 Dispatcher.Invoke(() => {
                     XYPlot1.Refresh();
                     XYPlot2.Refresh();
@@ -93,14 +104,19 @@ namespace UI.UserControls.MainPanels {
             }
         }
 
+        private void Reset_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
+            Task.Run(() => Console.Beep(1800, 50));
+            viewModel?.Simulation?.Reset();
+        }
+
         private void UpdateText() {
             try {
                 Dispatcher.Invoke(() => {
-                    labelDt.Text = $"dt = {( viewModel.Simulation.DeltaTime * 1000 ):F0} ms";
+                    labelDt.Text = $"dt = {( (viewModel?.Simulation?.DeltaTime ?? 0) * 1000 ):F0} ms";
                     labelTotalt.Text = $"total t = {t:F0} s";
 
-                    labelFeedG.Text = $"Feed Gesamtzucker = {( viewModel.Simulation.TotalFeedVolume * 800 ):F0} g";
-                    labelFeedV.Text = $"Feed Gesamtvolumen = {viewModel.Simulation.TotalFeedVolume:F1} L";
+                    labelFeedG.Text = $"Feed Gesamtzucker = {( (viewModel?.Simulation?.TotalFeedVolume ?? 0 ) * 800 ):F0} g";
+                    labelFeedV.Text = $"Feed Gesamtvolumen = {(viewModel?.Simulation?.TotalFeedVolume ?? 0):F1} L";
                 });
             } catch { }
         }

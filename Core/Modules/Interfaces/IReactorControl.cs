@@ -19,10 +19,17 @@ namespace Core.Modules.Interfaces
         bool CalculatedTempValveSetting { get; }
         double CalculatedTempControlSeeting { get; }
 
+        double[] PidParametersTemperature { get; }
+        double[] PidParametersVentilation { get; }
+
         void SetSimlation(IProcessSimulation sim);
         void Begin();
 
         //outside communication
         void SetFeedRate(double value);
+
+        void ResetTempPID();
+
+        void ResetVentillationPID();
     }
 }

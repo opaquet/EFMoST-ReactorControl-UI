@@ -36,7 +36,7 @@
                 <ColumnDefinition Width="10"/>
             </Grid.ColumnDefinitions>
             <TextBlock Text="Automatische Temperaturregelung:" FontSize="16" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5"></TextBlock>
-            <local:DigitalStateIndicator Grid.Row="1" Grid.Column="7" DataContext="{Binding AutomaticIndicators[4]}" HorizontalAlignment="Right" VerticalAlignment="Center" Width="25" Height="25"/>
+            <local:DigitalStateIndicator Grid.Row="1" Grid.Column="7" DataContext="{Binding AutomaticIndicators[4]}" HorizontalAlignment="Right" VerticalAlignment="Center" Width="25" Height="25" MouseDown="DigitalStateIndicator_MouseDown"/>
             <local:UpDownButton Grid.Row="3" Grid.Column="1" DataContext="{Binding ControlSettingValues[0]}"/>
             <local:UpDownButton Grid.Row="3" Grid.Column="3" DataContext="{Binding ControlSettingValues[10]}"/>
             <local:UpDownButton Grid.Row="3" Grid.Column="5" DataContext="{Binding ControlSettingValues[11]}"/>

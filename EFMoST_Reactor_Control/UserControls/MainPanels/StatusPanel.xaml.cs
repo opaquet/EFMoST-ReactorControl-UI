@@ -83,7 +83,7 @@ namespace UI.UserControls.MainPanels {
             v_air.Fill = GetBrush(_VM.DigitalOutIndicators[1].IsIndicating);
             v_air_prop_center.Fill = GetBrush(_VM.DigitalOutIndicators[3].IsIndicating);
             v_air_prop.Fill = GetBrush(_VM.AnalogOutValues[2].Value > 0);
-            l_air.Text = $"{(_VM.SetPointValues[2].Value * (_VM.ControlActiveIndicators[3].IsIndicating ? 1 : 0)):N0} {_VM.MeasurementValues[2].Unit}";
+            l_air.Text = $"{(_VM.SetPointValues[2].Value * (_VM.ControlActiveIndicators[2].IsIndicating ? 1 : 0)):N0} {_VM.MeasurementValues[2].Unit}";
             lr_air.Text = $"{_VM.MeasurementValues[2].Value:N0}  {_VM.MeasurementValues[2].Unit}";
 
             // Feed

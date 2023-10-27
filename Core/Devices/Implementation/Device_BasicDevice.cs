@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 
 namespace Core.Devices {
     abstract class BasicDevice : IDevice, IDisposable {
-        public const int MAX_CONNECTION_RETRIES = 3;
+        public const int MAX_CONNECTION_RETRIES = 6;
         public const int MAX_COMMAND_SEND_RETRIES = 3;
         public const int MAX_STOP_STRING_SEND_RETRIES = 1;
         public const int TX_TIMEOUT_MS = 2000;

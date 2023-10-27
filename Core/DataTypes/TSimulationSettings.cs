@@ -9,7 +9,7 @@
         public double ReactionHeatBiomass { get; set; } = 13.6;
         public double HeatTransferCoeffienctSteelAir { get; set; } = 0.0343;
         public double SimDeltaTime { get; set; } = 10; // s -> duration of sim steps
-        public double StartBio { get; set; } = 10; // g/L 
+        public double StartBio { get; set; } = 1; // g/L 
         public double StartSugar { get; set; } = 0; // g/L
         public double StartV { get; set; } = 450; // L
         public double StartTemp { get; set; } = 300; // L

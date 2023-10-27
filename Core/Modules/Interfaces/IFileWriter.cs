@@ -33,6 +33,7 @@ namespace Core.Modules.Interfaces {
             _filepath = filename;
             string directoryName = Path.GetDirectoryName(filename) ?? string.Empty;
             string FileName = Path.GetFileNameWithoutExtension(filename);
+            string FileExtension = Path.GetExtension(filename);
 
             // erstelle Verzeichnis, wenn nicht vorhanden
             if (!Directory.Exists(directoryName)) {
@@ -49,11 +50,11 @@ namespace Core.Modules.Interfaces {
             if (File.Exists(filename))
             {
                 int FNindex = 1;
-                string fname = directoryName + "\\old\\" + FileName + FNindex.ToString("D3") + ".log";
+                string fname = directoryName + "\\old\\" + FileName + FNindex.ToString("D3") + FileExtension;
                 while (File.Exists(fname))
                 {
                     FNindex++;
-                    fname = directoryName + "\\old\\" + FileName + FNindex.ToString("D3") + ".log";
+                    fname = directoryName + "\\old\\" + FileName + FNindex.ToString("D3") + FileExtension;
                 }
                 File.Move(filename, fname);
             }

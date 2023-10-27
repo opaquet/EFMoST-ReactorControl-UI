@@ -1,5 +1,6 @@
 ﻿using Core.DataTypes;
 using Core.Modules.Interfaces;
+using System;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -23,6 +24,8 @@ namespace Core.Modules
         private List<TRawData> _relayData = new();
         private int _lastGasSensorCycle = 0;
         private Timer? _SaveTimer;
+        private object _listAccessLock = new object();
+        private object _fileAccessLock = new object();
 
         private IFileWriter _FileWriterGasSensorData;
         private IFileWriter _FileWriterControllerData;
@@ -104,15 +107,20 @@ namespace Core.Modules
         #region load and save data methods
         public void SaveAllDataJson(string filename) {
             try {
-                var dataToSave = new {
-                    GasSensorData = _gasSensorData.Skip(1),
-                    ComputedValues = _computedValues.Skip(1),
-                    ControllerData = _controllerData.Skip(1),
-                    RawMeasurementData = _relayData
-                };
-                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-                string jsonData = JsonSerializer.Serialize(dataToSave, jsonOptions);
-                File.WriteAllText(filename, jsonData);
+                string jsonData = string.Empty;
+                lock (_listAccessLock) {
+                    var dataToSave = new {
+                        GasSensorData = _gasSensorData.Skip(1),
+                        ComputedValues = _computedValues.Skip(1),
+                        ControllerData = _controllerData.Skip(1),
+                        RawMeasurementData = _relayData
+                    };
+                    var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                    jsonData = JsonSerializer.Serialize(dataToSave, jsonOptions);
+                }
+                lock (_fileAccessLock) {
+                    File.WriteAllText(filename, jsonData);
+                }
                 LogEvent?.Invoke($"Data saved successfully to {filename}.", 1);
             } catch (Exception ex) {
                 LogEvent?.Invoke($"Error: Error saving data to {filename}. Error: {ex.Message}", 0);
@@ -125,10 +133,14 @@ namespace Core.Modules
                 // Header for GasSensorData
                 csvContent.AppendLine("TimeStamp; Relayed message");
                 // Actual Data
-                foreach (TRawData data in _relayData) {
-                    csvContent.AppendLine($"{data.TimeStamp};{data.Message}");
+                lock (_listAccessLock) {
+                    foreach (TRawData data in _relayData) {
+                        csvContent.AppendLine($"{data.TimeStamp};{data.Message}");
+                    }
                 }
-                _FileWriterRelayData.WriteLines(csvContent);
+                lock (_fileAccessLock) {
+                    _FileWriterRelayData.WriteLines(csvContent);
+                }
                 LogEvent?.Invoke($"Relay data saved successfully to {_FileWriterRelayData.FileName}.", 1);
             } catch (Exception ex) {
                 LogEvent?.Invoke($"Error: Error saving relay data to {_FileWriterRelayData.FileName}. Error: {ex.Message}", 0);
@@ -141,12 +153,16 @@ namespace Core.Modules
                 // Header for GasSensorData
                 csvContent.AppendLine("TimeStamp;ID;S1;S2;S3;S4;S5;S6;S7;S8;S9;Env1;Env2;Env3;ValveSetting;MeasurementCycle;SensorTime;SensorState;SensorStateTime");
                 // Actual Data
-                foreach (TGasSensorData data in _gasSensorData.Skip(1)) {
-                    string values = string.Join(";", data.Values.Select(v => v.ToString(CultureInfo.InvariantCulture)));
-                    string environment = string.Join(";", data.Enviroment.Select(v => v.ToString(CultureInfo.InvariantCulture)));
-                    csvContent.AppendLine($"{data.TimeStamp};{data.ID};{values};{environment};{data.ValveSetting};{data.MeasurementCycle};{data.SensorTime};{data.SensorState};{data.SensorStateTime}");
+                lock (_listAccessLock) {
+                    foreach (TGasSensorData data in _gasSensorData.Skip(1)) {
+                        string values = string.Join(";", data.Values.Select(v => v.ToString(CultureInfo.InvariantCulture)));
+                        string environment = string.Join(";", data.Enviroment.Select(v => v.ToString(CultureInfo.InvariantCulture)));
+                        csvContent.AppendLine($"{data.TimeStamp};{data.ID};{values};{environment};{data.ValveSetting};{data.MeasurementCycle};{data.SensorTime};{data.SensorState};{data.SensorStateTime}");
+                    }
                 }
-                _FileWriterGasSensorData.WriteLines(csvContent);
+                lock (_fileAccessLock) {
+                    _FileWriterGasSensorData.WriteLines(csvContent);
+                }
                 LogEvent?.Invoke($"GasSensor data saved successfully to {_FileWriterGasSensorData.FileName}.", 1);
             } catch (Exception ex) {
                 LogEvent?.Invoke($"Error: Error saving GasSensor data to {_FileWriterGasSensorData.FileName}. Error: {ex.Message}", 0);
@@ -157,35 +173,39 @@ namespace Core.Modules
             try {
                 StringBuilder csvContent = new();
                 // Header for ControllerData
-                int maxValuesCount = _controllerData.Max(data => data.Values.Length);
-                int maxSetpointsCount = _controllerData.Max(data => data.Setpoints.Length);
-                int maxAutomaticCount = _controllerData.Max(data => data.Automatic.Length);
-                int maxActiveCount = _controllerData.Max(data => data.Active.Length);
-                int maxAlarmCount = _controllerData.Max(data => data.Alarm.Length);
-                int maxAnalogOutCount = _controllerData.Max(data => data.AnalogOut.Length);
-                int maxDigitalOutCount = _controllerData.Max(data => data.DigitalOut.Length);
-                csvContent.AppendLine(  $"TimeStamp;" +
-                                        $"{string.Join(";", Enumerable.Range(1, maxValuesCount).Select(i => $"Values{i}"))};" +
-                                        $"{string.Join(";", Enumerable.Range(1, maxSetpointsCount).Select(i => $"Setpoints{i}"))};" +
-                                        $"{string.Join(";", Enumerable.Range(1, maxAutomaticCount).Select(i => $"Auto{i}"))};" +
-                                        $"{string.Join(";", Enumerable.Range(1, maxActiveCount).Select(i => $"Active{i}"))};" +
-                                        $"{string.Join(";", Enumerable.Range(1, maxAlarmCount).Select(i => $"Alarm{i}"))};" +
-                                        $"{string.Join(";", Enumerable.Range(1, maxAnalogOutCount).Select(i => $"AnalogOut{i}"))};" +
-                                        $"{string.Join(";", Enumerable.Range(1, maxDigitalOutCount).Select(i => $"DigitalOut{i}"))};" +
-                                        $"DirectControl;" +
-                                        $"ErrorCode");
-                // Actual Data
-                foreach (TControllerData data in _controllerData.Skip(1)) {
-                    string values = string.Join(";", data.Values.Select(v => v.ToString(CultureInfo.InvariantCulture)));
-                    string setpoints = string.Join(";", data.Setpoints.Select(v => v.ToString(CultureInfo.InvariantCulture)));
-                    string automatic = string.Join(";", data.Automatic);
-                    string active = string.Join(";", data.Active);
-                    string alarm = string.Join(";", data.Alarm);
-                    string analogOut = string.Join(";", data.AnalogOut);
-                    string digitalOut = string.Join(";", data.DigitalOut.Select(b => b ? "1" : "0")); // Convert bool to 1 or 0
-                    csvContent.AppendLine($"{data.TimeStamp};{values};{setpoints};{automatic};{active};{alarm};{analogOut};{digitalOut};{data.DirectControl};{data.ErrorCode}");
+                lock (_listAccessLock) {
+                    int maxValuesCount = _controllerData.Last().Values.Length;
+                    int maxSetpointsCount = _controllerData.Last().Setpoints.Length;
+                    int maxAutomaticCount = _controllerData.Last().Automatic.Length;
+                    int maxActiveCount = _controllerData.Last().Active.Length;
+                    int maxAlarmCount = _controllerData.Last().Alarm.Length;
+                    int maxAnalogOutCount = _controllerData.Last().AnalogOut.Length;
+                    int maxDigitalOutCount = _controllerData.Last().DigitalOut.Length;
+                    csvContent.AppendLine($"TimeStamp;" +
+                                            $"{string.Join(";", Enumerable.Range(1, maxValuesCount).Select(i => $"Values{i}"))};" +
+                                            $"{string.Join(";", Enumerable.Range(1, maxSetpointsCount).Select(i => $"Setpoints{i}"))};" +
+                                            $"{string.Join(";", Enumerable.Range(1, maxAutomaticCount).Select(i => $"Auto{i}"))};" +
+                                            $"{string.Join(";", Enumerable.Range(1, maxActiveCount).Select(i => $"Active{i}"))};" +
+                                            $"{string.Join(";", Enumerable.Range(1, maxAlarmCount).Select(i => $"Alarm{i}"))};" +
+                                            $"{string.Join(";", Enumerable.Range(1, maxAnalogOutCount).Select(i => $"AnalogOut{i}"))};" +
+                                            $"{string.Join(";", Enumerable.Range(1, maxDigitalOutCount).Select(i => $"DigitalOut{i}"))};" +
+                                            $"DirectControl;" +
+                                            $"ErrorCode");
+                    // Actual Data
+                    foreach (TControllerData data in _controllerData.Skip(1)) {
+                        string values = string.Join(";", data.Values.Select(v => v.ToString(CultureInfo.InvariantCulture)));
+                        string setpoints = string.Join(";", data.Setpoints.Select(v => v.ToString(CultureInfo.InvariantCulture)));
+                        string automatic = string.Join(";", data.Automatic);
+                        string active = string.Join(";", data.Active);
+                        string alarm = string.Join(";", data.Alarm);
+                        string analogOut = string.Join(";", data.AnalogOut);
+                        string digitalOut = string.Join(";", data.DigitalOut.Select(b => b ? "1" : "0")); // Convert bool to 1 or 0
+                        csvContent.AppendLine($"{data.TimeStamp};{values};{setpoints};{automatic};{active};{alarm};{analogOut};{digitalOut};{data.DirectControl};{data.ErrorCode}");
+                    }
                 }
-                _FileWriterControllerData.WriteLines(csvContent);
+                lock (_fileAccessLock) {
+                    _FileWriterControllerData.WriteLines(csvContent);
+                }
                 LogEvent?.Invoke($"Controller data saved successfully to {_FileWriterControllerData.FileName}.",1);
             } catch (Exception ex) {
                 LogEvent?.Invoke($"Error: Error saving controller data to {_FileWriterControllerData.FileName}. Error: {ex.Message}",0);
@@ -198,10 +218,14 @@ namespace Core.Modules
                 // Header for ComputedValues
                 csvContent.AppendLine("TimeStamp;Ethanol;H2S");
                 // Actual Data
-                foreach (var data in _computedValues.Skip(1)) {
-                    csvContent.AppendLine($"{data.TimeStamp};{data.Ethanol.ToString(CultureInfo.InvariantCulture)};{data.H2S.ToString(CultureInfo.InvariantCulture)}");
+                lock (_listAccessLock) {
+                    foreach (var data in _computedValues.Skip(1)) {
+                        csvContent.AppendLine($"{data.TimeStamp};{data.Ethanol.ToString(CultureInfo.InvariantCulture)};{data.H2S.ToString(CultureInfo.InvariantCulture)}");
+                    }
                 }
-                _FileWriterComputedData.WriteLines(csvContent);
+                lock (_fileAccessLock) {
+                    _FileWriterComputedData.WriteLines(csvContent);
+                }
                 LogEvent?.Invoke($"Computed GasSensor data saved successfully to {_FileWriterComputedData.FileName}.", 1);
             } catch (Exception ex) {
                 LogEvent?.Invoke($"Error: Error saving computed GasSensor data to {_FileWriterComputedData.FileName}. Error: {ex.Message}", 0);
@@ -218,7 +242,9 @@ namespace Core.Modules
         /// <returns>True if the data was successfully added, otherwise false.</returns>
         public bool AddRawMesurementData(string message) {
             try {
-                _relayData.Add(new TRawData(message));
+                lock (_listAccessLock) {
+                    _relayData.Add(new TRawData(message));
+                }
                 return true;
             } catch (Exception e) {
                 LogEvent?.Invoke($"Error: Unable to parse message relay -> {e.Message}", 0);
@@ -257,9 +283,10 @@ namespace Core.Modules
                                     directcontrol: controllerJSON["Ctrl"]?["Out"]?["dctrl"]?.GetValue<int>() == 1,
                                     errorcode: errorCode
                                     );
-                _controllerData.Add(NewData);
-                _LastControllerDatum = NewData;
-
+                lock (_listAccessLock) {
+                    _controllerData.Add(NewData);
+                    _LastControllerDatum = NewData;
+                }
                 if (errorCode != 0 ) {
                     LogEvent?.Invoke($"Warning: Controller reported errors: {(TControllerData.ControllerErrors)errorCode}", 0);
                     ControllerErrorReport?.Invoke((TControllerData.ControllerErrors)errorCode);
@@ -296,8 +323,10 @@ namespace Core.Modules
                             sensorstate: gasSensorJSON["Sys"]?["sId"]?.GetValue<byte>(),
                             sensorstatetime: gasSensorJSON["Sys"]?["st"]?.GetValue<int>()
                             );
-                _gasSensorData.Add(newData);
-                _LastGasSensorDatum = newData;
+                lock (_listAccessLock) {
+                    _gasSensorData.Add(newData);
+                    _LastGasSensorDatum = newData;
+                }
 
             } catch (Exception e) {
                 LogEvent?.Invoke($"Error: Unable to parse GasSensorDatum -> {e.Message}", 0);
@@ -326,8 +355,7 @@ namespace Core.Modules
             T[] result = new T[length];
             if (jsonObject?.ContainsKey(key) ?? false) {
                 var jsonArray = jsonObject[key]?.AsArray();
-                if (jsonArray?.Count != length)
-                    {
+                if (jsonArray?.Count != length) {
                     throw new ArgumentException($"Lenght of <T>JsonArray {key} ({jsonArray?.Count}) does not match expected lenght ({length} of <T> array)!");
                 }
                 for (int i = 0; i < length; i++) {
@@ -395,27 +423,11 @@ namespace Core.Modules
             }
 
             // determine max and min values and their positions in the according signal 
-            double[] maxValues = { UInt16.MinValue, UInt16.MinValue, UInt16.MinValue, UInt16.MinValue, UInt16.MinValue, UInt16.MinValue, UInt16.MinValue, UInt16.MinValue, UInt16.MinValue };
-            double[] minValues = { UInt16.MaxValue, UInt16.MaxValue, UInt16.MaxValue, UInt16.MaxValue, UInt16.MaxValue, UInt16.MaxValue, UInt16.MaxValue, UInt16.MaxValue, UInt16.MaxValue };
-            double[] PeakHeights = new double[9];
-
-            for (int i = 0; i < LastCycleGasSensorData.Count; i++) {
-                for (int k = 0; k < LastCycleGasSensorData[i].Length; k++) {
-                    if (maxValues[i] < LastCycleGasSensorData[i][k]) {
-                        maxValues[i] = LastCycleGasSensorData[i][k];
-                    }
-                    if (minValues[i] > LastCycleGasSensorData[i][k]) {
-                        minValues[i] = LastCycleGasSensorData[i][k];
-                    }
-                }
-            }
+            IEnumerable<double> maxValues = LastCycleGasSensorData.Select(values => values.Max());
+            IEnumerable<double> minValues = LastCycleGasSensorData.Select(values => values.Min());
 
             //determine the peak heights
-            for (int i = 0; i < LastCycleGasSensorData.Count; i++) {
-                PeakHeights[i] = maxValues[i] - minValues[i];
-            }
-
-            return PeakHeights;
+            return maxValues.Zip(minValues, (max, min) => max - min).ToArray(); 
         }
 
         /// <summary>
@@ -434,17 +446,13 @@ namespace Core.Modules
             // mean and stdandard deviation values for mean centering and normalizing the peakheights (in the context of the original calibration data) 
             double[] xmean = { 419.962962962963, 4320.6877394636, 464.583014048531, 1199.23627075351, 1947.29054916986, 1423.60600255428, 1215.5938697318, 4783.55044699872 };
             double[] xstd = { 286.756587510063, 1999.52479662924, 221.291975615196, 506.995209270786, 1132.13343087447, 701.432843858327, 668.672427384668, 2298.72129943355 };
-            double[] F = new double[8];
-            for (int j = 0; j < 8; j++) {
-                F[j] = (peakHeights[j] - xmean[j]) / xstd[j];
-            }
+
+            double[] meanCentered = peakHeights.Zip(xmean, (pHeight, xm) => pHeight - xm).ToArray();
+            double[] normalized = meanCentered.Zip(xstd, (mCentered, xs) => mCentered / xs).ToArray();
 
             // Loading values for data projection into latent variable space
             double[] loadings = { 0.000278830889892849, -0.0001186180119868, 0.00085561116417757, 0.000252705273984966, 0.000669659446262931, -0.000115565357383454, -0.000123132779218994, 6.49453843878399e-05 };
-            double Scores = 0;
-            for (int j = 0; j < 8; j++) {
-                Scores += F[j] * loadings[j];
-            }
+            double Scores = normalized.Zip(loadings, (f, load) => f * load).Sum();
 
             // coefficients/parameters for (non)linear regression from the latent variables to the actual ethanol concentration
             double[] parameters = { 0.697695734815521, 536.806245267187, 122372.306520375 };
@@ -460,17 +468,14 @@ namespace Core.Modules
         /// </summary>
         /// <param name="peakHeights">properly calculated peak heights of the 9 individual gassensors</param>
         /// <returns>H2S gas concentration in ppm as <b>double</b></returns>
-        private static double CalculateH2SFromPEakHeights(double[] peakHeights) {
+        private static double CalculateH2SFromPeakHeights(double[] peakHeights) {
             if (peakHeights == null || peakHeights.Length != 9)
                 {
                 throw new ArgumentException("peakHeight must contain 9 elements and must not be null!");
             }
 
             // calculate the average peakheight of the 8 first non-H2S related signals for comparison
-            double avgeragePeakHeight = 0;
-            for (int i = 0; i < 8; i++) {
-                avgeragePeakHeight += peakHeights[i]/8;
-            }
+            double avgeragePeakHeight = peakHeights.Take(8).Average();
 
             // H2S is estimated by comparin ist sensor signsl(peakheigth) against the other 8 signals
             double H2S = peakHeights[8] / avgeragePeakHeight * 10.0 - 10.0;
@@ -490,7 +495,7 @@ namespace Core.Modules
             try {
                 double[] PeakHeights = GetLastCycleGasSensorPeakHeights();
                 ethanol = CalculateEthanolFromPeakHeights(PeakHeights);
-                h2s = CalculateH2SFromPEakHeights(PeakHeights);
+                h2s = CalculateH2SFromPeakHeights(PeakHeights);
             } catch (Exception ex) {
                 LogEvent?.Invoke($"Error: GasSensor cycle evaluation error -> {ex.Message}", 0);
                 return null;
@@ -505,51 +510,66 @@ namespace Core.Modules
         /// It also changes the order of elements, so that it is the same as for the UI elements
         /// </summary>
         private static double[] ConvertControllerValues(int[] controllerValues) {
-            double[] result = new double[18];
-            double x;
-            result[0] = ((int)(controllerValues[0] * 8.04 + 125.8) / 10) * 10;
-            result[1] = controllerValues[1] * 3.84 / 10.24;
-            result[2] = controllerValues[2] * 4.5 / 10.24;
-            x = controllerValues[3] / 10.24;
-            result[3] = (x * 3 - x * x * 0.0076116 - x * x * x * 1.8243e-5);
-            result[4] = controllerValues[4] / 10.0;
-            result[5] = controllerValues[5] / 10.0;
-            result[6] = controllerValues[12] / 10.0;
-            result[7] = controllerValues[10] / 10.0;
-            result[8] = controllerValues[15] / 10.0;
-            result[9] = controllerValues[4] / 10.0;
-            result[10] = controllerValues[8] / 10.0;
-            result[11] = controllerValues[9] / 10.0;
-            result[12] = controllerValues[7];
-            result[13] = controllerValues[6];
-            return result;
+            if (controllerValues.Length != 18) { 
+                throw new ArgumentOutOfRangeException(nameof(controllerValues),"ControllerValues must contain 18 elements"); 
+            }
+
+            double[] cValues = ConvertControllerSetpoints(controllerValues[0..6]);
+
+            return cValues.Concat(new double[] {
+                controllerValues[12] / 10.0,
+                controllerValues[10] / 10.0,
+                controllerValues[15] / 10.0,
+                controllerValues[4] / 10.0,
+                controllerValues[8] / 10.0,
+                controllerValues[9] / 10.0,
+                controllerValues[7],
+                controllerValues[6]
+            }).ToArray();
         }
 
         /// <summary>
         /// Converts the raw integer setpoint data from the controller to actual physical values. 
         /// </summary>
         private static double[] ConvertControllerSetpoints(int[] controllerSetpoints) {
-            double[] result = new double[6];
-            double x;
-            result[0] = ((int)(controllerSetpoints[0] * 8.04 + 125.8) / 10) * 10;
-            result[1] = controllerSetpoints[1] * 3.84 / 10.24;
-            result[2] = controllerSetpoints[2] * 4.5 / 10.24;
-            x = controllerSetpoints[3] / 10.24;
-            result[3] = (x * 3 - x * x * 0.0076116 - x * x * x * 1.8243e-5);
-            result[4] = controllerSetpoints[4] / 10.0;
-            result[5] = controllerSetpoints[5] / 10.0;
-            return result;
+
+            const double MotorRpmConversionFactor = 3.84 / 10.24;
+            const double AirflowConversionFactor = 4.5 / 10.24;
+
+            if (controllerSetpoints.Length != 6) { 
+                throw new ArgumentOutOfRangeException(nameof(controllerSetpoints), "Setpoints must contain 6 values"); 
+            }
+
+            double x = controllerSetpoints[3] / 10.24;
+
+            return new double[] {
+                ((int)(controllerSetpoints[0] * 8.04 + 125.8) / 10) * 10, // linear conversion from pressure difference to fluid level, also rounding to the next 10 L.
+                controllerSetpoints[1] * MotorRpmConversionFactor, // linear conversion based on rough motor rpm measurements.
+                controllerSetpoints[2] * AirflowConversionFactor, // linear conversion based on rough airflow measurements.
+                ( x * 3 - x * x * 0.0076116 - x * x * x * 1.8243e-5 ), // Non-linear (polynomial) conversion derived from manual calibration data.
+                controllerSetpoints[4] / 10.0,  // Temperature converion. Just divide by 10 since the PLC uses Integers to send fixed point values.
+                controllerSetpoints[5] / 10.0  // Concentration converion. Just divide by 10 since the PLC uses Integers to send fixed point values.
+            };
         }
 
+        /// <summary>
+        /// Converts the Active States from the Controller (of which there are 7) into the 6 general variables that state 
+        /// whether one of the 6 control shemes are actually active (be it in manual or automatic mode)
+        /// This is necessary as for the motor control, there are two values indicating if the motor is turning clockwise or counterclockwise
+        /// </summary>
         private static bool[] ConvertActiveValues(bool[] activeValues) {
-            bool[] result = new bool[6];
-            result[0] = activeValues[0];
-            result[1] = activeValues[1];
-            result[2] = activeValues[3];
-            result[3] = activeValues[4];
-            result[4] = activeValues[5];
-            result[5] = activeValues[6];
-            return result;
+            if (activeValues.Length != 7) { 
+                throw new ArgumentOutOfRangeException(nameof(activeValues), "Control active signal must contain 7 values"); 
+            }
+
+            return new bool[] {
+                activeValues[0],
+                activeValues[1] || activeValues[2], // value 1 indicates cw rotaion, value 2 ccw rotation. We dont care about the direction
+                activeValues[3],
+                activeValues[4],
+                activeValues[5],
+                activeValues[6]
+            };
         }
         #endregion
     }

@@ -8,13 +8,20 @@ namespace Core.Modules {
         public event Action<string, int>? LogEvent;
         public event Action<string>? StartupEvent;
         public event Action? SimulationStepFinished;
-        public IReadOnlyList<double> SimTimeValues { get => _allSimTimesUntilNow; }
-        public IReadOnlyList<double> SimTimePredictions { get => _FutureSimTimes2Hours; }
-        public IReadOnlyList<double[]> SimStateValues { get => _allSimValuesUntilNow; }
-        public IReadOnlyList<double[]> SimStatePredictions { get => _FutureSimValues2Hours; }
+        public IReadOnlyList<double> SimTimeValues {
+            get { lock (_lock) { return _allSimTimesUntilNow; } }
+        }
+        public IReadOnlyList<double> SimTimePredictions {
+            get { lock (_lock) { return _FutureSimTimes2Hours; } }
+        }
+        public IReadOnlyList<double[]> SimStateValues {
+            get { lock (_lock) { return _allSimValuesUntilNow; } }
+        }
+        public IReadOnlyList<double[]> SimStatePredictions {
+            get { lock (_lock) { return _FutureSimValues2Hours; } }
+        }
 
-
-
+        private object _lock = new object();
         private IAppSettings _appSettings;
         private IDataHandler _dataStore;
         private IReactorControl _reactorControl;
@@ -45,9 +52,6 @@ namespace Core.Modules {
         private double _tLast = 0;
         private DateTime _startTime = DateTime.Now;
 
-
-
-
         public ProcessSimulation(IAppSettings settings, IDataHandler dataHandler, IReactorControl reactorControl) {
             _appSettings = settings;
             _dataStore = dataHandler;
@@ -72,8 +76,56 @@ namespace Core.Modules {
                 _appSettings.SimSettings.StartV
             };
 
+            InitializeSigmaPoints();
+
+            // process noise covariance (for unscented transform)
+            Q = new double[] {
+                0.2,
+                0.2,
+                0.1,
+                0.1,
+                0.2,
+                0.5
+            };
+
+            R = new double[] {
+                0,
+                0,
+                1,
+                0.1,
+                0.1,
+                10
+            };
+
+            for (int i = 0; i < N; i++) {
+                pFilt[i][i] = Q[i];
+            }
+           
+
+
+
             _simIntervalTimer?.Dispose();
             StartupEvent?.Invoke("starting controlIntervalTimer...");
+            _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 100));
+        }
+
+        public void Reset() {
+            _simIntervalTimer?.Dispose();
+
+            LogEvent?.Invoke("SimModule reset!", 1);
+            lock (_lock) {
+                _startTime = DateTime.Now;
+                _tNow = 0;
+                _tLast = 0;
+
+                TotalFeedVolume = 0;
+
+                _allSimTimesUntilNow = new List<double>();
+                _FutureSimTimes2Hours = new List<double>();
+                _allSimValuesUntilNow = new List<double[]>();
+                _FutureSimValues2Hours = new List<double[]>();
+            }
+
             _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 100));
         }
 
@@ -91,61 +143,178 @@ namespace Core.Modules {
             _acualVentilationRate = _dataStore.GetLastControllerDatum().Setpoints[2] / 60;
 
 
-            // solve from last step to now
-            (double X, double[] Y) = RK45SolverLast(model: SimModel,
-                                         initialValues: _simStateValues,
-                                         xStart: _tLast,
-                                         xEnd: _tNow,
-                                         tol: 1e-8);
-            
+            // calculate sigma points (adding/subtracting scaled errors to last known state)
+            sigmaPoints[0] = (double[]) _simStateValues.Clone();
+            for (int i = 0; i < N; i++) {
+                sigmaPoints[i + 1] = (double[]) _simStateValues.Clone();
+                sigmaPoints[i + 1 + N] = (double[]) _simStateValues.Clone();
+                for (int j = 0; j < N; j++) {
+                    sigmaPoints[i + 1][j]     += pFilt[i][j] * (N + lambda);
+                    sigmaPoints[i + 1 + N][j] -= pFilt[i][j] * (N + lambda);
+                }
+            }
+
+            // perform simulation for each sigma point
+            for (int i = 0; i < NSP; i++) {
+                (_, sigmaPointStates[i]) = RK45SolverLast(model: SimModel, initialValues: sigmaPoints[i], xStart: _tLast, xEnd: _tNow, tol: 1e-8);
+            }
+
+            // calculate weigted state value -> prediction
+            for (int i = 0; i < N; i++) {
+                _simStateValues[i] = 0;
+                for (int j = 0; j < NSP; j++) {
+                    _simStateValues[i] += sigmaPointStates[j][i] * w[j];
+                }
+            }
+
+            // estimate simulation error
+            for (int i = 0; i < N; i++) {
+                for (int j = 0; j < N; j++) {
+                    P[i][j] = Q[i] * (_tNow - _tLast);
+                }
+            }
+            for (int j = 0; j < NSP; j++) {
+                for (int k = 0; k < N; k++) {
+                    for (int l = 0; l < N; l++) {
+                        P[k][l] += wc[j] * ( sigmaPointStates[j][k] - _simStateValues[k] ) * ( sigmaPointStates[j][l] - _simStateValues[l] );
+                    }
+                }
+            }
+
+            // Kalman filter calculation
+            measuredState = new double[] {
+                0, // biomass unavailable
+                0, // glucose unavailable
+                _dataStore.GetLastComputedValueDatum().Ethanol, // ethanol
+                _dataStore.GetLastControllerDatum().Values[7],  // oxygen
+                _dataStore.GetLastControllerDatum().Values[4],  // temperature
+                _dataStore.GetLastControllerDatum().Values[0],  // volume
+            };
+
+            //Kalman Gain
+            for (int i = 0; i < N; i++) {
+                for (int j = 0; j < N; j++) {
+                    K[i][j] = P[i][j] / (P[i][j] + H[j] * R[j] );
+                }
+            }
+
+            // Filtered state
+            for (int i = 0; i < N; i++) {
+                for (int j = 0; j < N; j++) {
+
+                    _filteredStateValues[j] = _simStateValues[j] + K[j][i] * ( measuredState[j] - _simStateValues[j] );
+                }
+            }
+
+            // Filtered Error
+            for (int i = 0; i < N; i++) {
+                for (int j = 0; j < N; j++) {
+                    pFilt[i][j] -= K[i][j] * H[j] * P[i][j];
+                }
+            }
+
+
+
             //later addition: sum up the total feed volume
             TotalFeedVolume += _acualFeedRate * ( _tNow - _tLast );
 
-            Debug.Write(_tLast.ToString("F2"));
-            Debug.Write(", ");
-            Debug.Write(_tNow.ToString("F2"));
-            Debug.Write(", ");
-            Debug.Print(X.ToString("F2"));
-
             // update values
             _tLast = _tNow;
-            _simStateValues = (double[]) Y.Clone();
-            _allSimTimesUntilNow.Add(_tNow);
-            _allSimValuesUntilNow.Add(Y);
+            lock (_lock) {
+                //_simStateValues = (double[]) Y.Clone();
+                _allSimTimesUntilNow.Add(_tNow);
+                _allSimValuesUntilNow.Add((double[]) _simStateValues.Clone());
+            }
 
+            //double measuredTemp = _dataStore.GetLastControllerDatum().Values[4] + 273.15;
+            //double measuredVolume = _dataStore.GetLastControllerDatum().Values[0];
+            //double measuredEthanol = _dataStore.GetLastComputedValueDatum().Ethanol;
+            //double measuredOxygen = _dataStore.GetLastControllerDatum().Values[7] / 1000;
 
-
-            double measuredTemp = _dataStore.GetLastControllerDatum().Values[4] + 273.15;
-            double measuredVolume = _dataStore.GetLastControllerDatum().Values[0];
-            double measuredEthanol = _dataStore.GetLastComputedValueDatum().Ethanol;
-            double measuredOxygen = _dataStore.GetLastControllerDatum().Values[7]/1000;
-
-            // temp correction
-            _simStateValues[4] = ( _simStateValues[4] * 199 + measuredTemp ) / 200;
-
-            //volume correction
-            _simStateValues[5] = ( _simStateValues[5] * 199 + measuredVolume ) / 200;
-
-            //ethanol correction
-            _simStateValues[2] = ( _simStateValues[2] * 199 + measuredEthanol ) / 200;
-
-            //oxygen correction
-            _simStateValues[3] = (_simStateValues[3] * 199 + measuredOxygen ) / 200; ;
+            //// temp correction
+            //_simStateValues[4] = ( _simStateValues[4] * 199 + measuredTemp ) / 200;
+            ////volume correction
+            //_simStateValues[5] = ( _simStateValues[5] * 199 + measuredVolume ) / 200;
+            ////ethanol correction
+            //_simStateValues[2] = ( _simStateValues[2] * 199 + measuredEthanol ) / 200;
+            ////oxygen correction
+            //_simStateValues[3] = ( _simStateValues[3] * 199 + measuredOxygen ) / 200; ;
 
             // solve from now to 2 hours in the future
-
-
-
             (List<double> TL, List<double[]> YL) = RK45Solver(model: SimModel,
                                          initialValues: _simStateValues,
                                          xStart: _tNow,
                                          xEnd: _tNow + 3600,
                                          tol: 1e-8);
-
-            _FutureSimTimes2Hours = TL.ToArray().ToList();
-
-            _FutureSimValues2Hours = YL.ToArray().ToList();
+            lock (_lock) {
+                _FutureSimTimes2Hours = TL.ToArray().ToList();
+                _FutureSimValues2Hours = YL.ToArray().ToList();
+            }
             SimulationStepFinished?.Invoke();
+        }
+
+
+        double[] w, wc;
+        double[] Q, R;
+        double[] H;
+        double[] _filteredStateValues;
+        double[] measuredState;
+        double[][] sigmaPoints, pFilt;
+        double[][] sigmaPointStates;
+        double[][] P;
+        double[][] K;
+        int N, NSP;
+        double lambda;
+
+        private void InitializeSigmaPoints() {
+            // solve for model error determination (sigma points / unscented transform)
+            const double alpha = 1e-3;
+            const double kappa = 0;
+            const double beta = 2;
+
+            N = _simStateValues.Length;
+            NSP = 2 * N + 1;
+            lambda = alpha * alpha * ( N + kappa ) - N;
+            w = new double[NSP];
+            w[0] = lambda / ( N + lambda );
+            for (int i = 1; i < NSP; i++) {
+                w[i] = 1 / ( 2 * ( N + lambda ) );
+            }
+
+            H = new double[] { 0, 0, 1, 1, 1, 1 };
+
+            wc = new double[NSP];
+            wc[0] = lambda / ( N + lambda ) + ( 1 - alpha * alpha + beta );
+            for (int i = 1; i < NSP; i++) {
+                wc[i] = w[i];
+            }
+
+            pFilt = new double[N][];
+            for (int i = 0; i < N; i++) {
+                pFilt[i] = new double[N];
+            }
+
+            P = new double[N][];
+            for (int i = 0; i < N; i++) {
+                P[i] = new double[N];
+            }
+
+            K = new double[N][];
+            for (int i = 0; i < N; i++) {
+                K[i] = new double[N];
+            }
+
+            sigmaPoints = new double[NSP][];
+            for (int i = 0; i < NSP; i++) {
+                sigmaPoints[i] = (double[]) _simStateValues.Clone();
+            }
+
+            sigmaPointStates = new double[NSP][];
+            for (int i = 0; i < NSP; i++) {
+                sigmaPointStates[i] = new double[N];
+            }
+
+            _filteredStateValues = (double[]) _simStateValues.Clone();
         }
 
 
@@ -173,13 +342,12 @@ namespace Core.Modules {
             if (y.Length != 6) { throw new ArgumentException($"Lenght of y must be 6! It is {y.Length}..."); }
 
             // copy into new Varibales so that the names are easier to recognize in the calcuations
-            double X  = y[0];
-            double G  = y[1];
-            double E  = y[2];
-            double O2 = y[3];
-            double T  = y[4];
-            double V  = y[5];
-
+            double X  = Math.Max(y[0], _appSettings.SimSettings.StartBio);
+            double G  = Math.Max(y[1],0);
+            double E  = Math.Max(y[2],0);
+            double O2 = Math.Max(y[3],0);
+            double T  = Math.Max(y[4],273);
+            double V  = Math.Max(y[5],0);
 
             // calculate a temp correction factor based on the arrhenius equation
             double Ar = Arrhenius(T) * Sigmoid(T, 273.15 + 39, .5);
@@ -188,11 +356,9 @@ namespace Core.Modules {
             double ox_factor = 1 - Sigmoid(O2, 0.0001, 40000);
 
             // calculate actual rate coefficients based on modified monod kinetics
-            double m_ox = Monod(G, _appSettings.SimSettings.MueMaxOx) * Ar * Sigmoid(G, 0.065, 500) * ox_factor;
-            double m_red = Monod(G, _appSettings.SimSettings.MueMaxRed) * Ar * ( 1 - Sigmoid(G, 0.065, 500) );
-            double m_eth = Monod(E, _appSettings.SimSettings.MueMaxEth) * Ar * ( 1 - Sigmoid(G, 0.065, 100) );
-
-
+            double m_ox = Monod(G, _appSettings.SimSettings.MueMaxOx) * Ar * Sigmoid(G, 0.065, 400) * ox_factor;
+            double m_red = Monod(G, _appSettings.SimSettings.MueMaxRed) * Ar * ( 1 - Sigmoid(G, 0.065, 400) );
+            double m_eth = Monod(E, _appSettings.SimSettings.MueMaxEth) * Ar * ( 1 - Sigmoid(G, 0.065, 80) );
 
             // active cooling emulating an active temp control (increasing coolant flow to maximum if temp > 30 °C)
             double act_cool = 1 - Sigmoid(T, 303.15, 2);
@@ -316,30 +482,17 @@ namespace Core.Modules {
                 xValues.Add(xEnd);
                 yValues.Add((double[]) y_new.Clone());
             }
-
-
-
             return (xValues, yValues);
         }
 
         private static double[] AddArrays(double[] a, double[] b) {
-            if (a.Length != b.Length) {
-                throw new ArgumentException("Arrays must be of the same length");
-            }
-
-            double[] result = new double[a.Length];
-            for (int i = 0; i < a.Length; i++) {
-                result[i] = a[i] + b[i];
-            }
-            return result;
+            return a.Length != b.Length
+                ? throw new ArgumentException("Arrays must be of the same length")
+                : a.Zip(b, (av, bv) => av + bv).ToArray();
         }
 
         private static double[] ScaleArray(double[] a, double factor) {
-            double[] result = new double[a.Length];
-            for (int i = 0; i < a.Length; i++) {
-                result[i] = a[i] * factor;
-            }
-            return result;
+            return a.Select((v) => v * factor).ToArray(); 
         }
         #endregion
     }

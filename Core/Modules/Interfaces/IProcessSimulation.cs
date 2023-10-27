@@ -22,6 +22,7 @@ namespace Core.Modules.Interfaces
         double Volume { get; set; }
         double DeltaTime { get; }
         double TotalFeedVolume { get; }
-        public void Begin();
+        void Begin();
+        void Reset();
     }
 }

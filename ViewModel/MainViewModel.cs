@@ -35,6 +35,14 @@ namespace ViewModel
 
         public SimulationViewModel? Simulation { get; private set; }
 
+        public void ResetTempPID() {
+            _coreManger?.reactorControl?.ResetTempPID();
+        }
+
+        public void ResetVentillationPID() {
+            _coreManger?.reactorControl?.ResetVentillationPID();
+        }
+
         public MainViewModel() {
             // create the manager instance from the core program logic first
             _coreManger = Factory.CreateManagerInstance();

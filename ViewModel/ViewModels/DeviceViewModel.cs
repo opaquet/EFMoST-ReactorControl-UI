@@ -17,7 +17,7 @@ namespace ViewModel.ViewModels
 
         public bool IsConnected { get; private set; }
         public string ConnectionStatus { 
-            get => IsConnected ? "Verbunden!" : "Nicht Verbunden"; 
+            get => IsConnected ? $"V {_device.VerString}" : "Nicht Verbunden"; 
         }
         public string ConnectionStatusColor { 
             get => IsConnected ? "#fafafa" : "#f44"; 

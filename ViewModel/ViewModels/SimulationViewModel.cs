@@ -17,6 +17,10 @@ namespace ViewModel.ViewModels  {
 
         public double TotalFeedVolume { get => _processSim.TotalFeedVolume; }
 
+        public void Reset() {
+            _processSim.Reset();
+        }
+
         public List<double[]> State {
             get {
                 double[][] allValues = _processSim.SimStateValues.ToArray();

@@ -72,6 +72,8 @@ namespace UI.UserControls {
             XYPlot.Plot.YAxis.Label(viewModel.Chart.ValuesCollection[SelectedValue].YLabel);
             XYPlot.Plot.Title(viewModel.Chart.ValuesCollection[SelectedValue].Name);
             XYPlot.Plot.SetAxisLimitsY(viewModel.Chart.ValuesCollection[SelectedValue].MinValue, viewModel.Chart.ValuesCollection[SelectedValue].MaxValue);
+            XYPlot.Configuration.Zoom = false;
+            XYPlot.Configuration.Pan = false;
             XYPlot.Refresh();
         }
     }

@@ -65,6 +65,12 @@
                     <TextBlock x:Name="labelFeedV" Text="Feed Gesamtvolumen =" FontSize="16" Grid.Row="2" VerticalAlignment="Center" Grid.Column="1" Grid.ColumnSpan="3"/>
                     <TextBlock x:Name="labelFeedG" Text="Feed Gesamtzucker =" FontSize="16" Grid.Row="3" VerticalAlignment="Center" Grid.Column="1" Grid.ColumnSpan="3"/>
 
+                    <Border Grid.Column="1" Grid.Row="7" Background="#FFCACACA" CornerRadius="25" Margin="5" MouseDown="Reset_MouseDown">
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="1"/>
+                        </Border.Effect>
+                        <TextBlock Text="Reset" FontSize="16" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
                     <local:UpDownButton Grid.Column="1" Grid.Row="8" DataContext="{Binding Simulation.Biomass}"/>
                     <local:UpDownButton Grid.Column="3" Grid.Row="8" DataContext="{Binding Simulation.Sugar}"/>
                     <local:UpDownButton Grid.Column="1" Grid.Row="9" DataContext="{Binding Simulation.Ethanol}"/>
