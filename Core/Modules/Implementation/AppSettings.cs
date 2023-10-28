@@ -20,7 +20,7 @@ namespace Core.Modules
 
         public static void SaveToFile<T>(T settings, string fileName) {
             string json = JsonSerializer.Serialize(settings, options);
-            File.WriteAllText(fileName, json);
+            File.WriteAllText(fileName, json) ;
         }
     }
 
