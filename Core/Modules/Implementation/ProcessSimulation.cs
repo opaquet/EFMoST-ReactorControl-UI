@@ -1,6 +1,10 @@
 ﻿using Core.DataTypes;
 using Core.Modules.Interfaces;
 using System.Diagnostics;
+using MathNet.Numerics;
+using MathNet.Numerics.LinearAlgebra.Complex;
+using System.Numerics;
+using MathNet.Numerics.LinearAlgebra;
 
 namespace Core.Modules {
     internal class ProcessSimulation : IProcessSimulation, IDisposable {
@@ -70,8 +74,8 @@ namespace Core.Modules {
             _simStateValues = new double[] { 
                 _appSettings.SimSettings.StartBio,
                 _appSettings.SimSettings.StartSugar,
-                0,
-                0,
+                0.001,
+                0.008,
                 _appSettings.SimSettings.StartTemp,
                 _appSettings.SimSettings.StartV
             };
@@ -79,34 +83,14 @@ namespace Core.Modules {
             InitializeSigmaPoints();
 
             // process noise covariance (for unscented transform)
-            Q = new double[] {
-                0.2,
-                0.2,
-                0.1,
-                0.1,
-                0.2,
-                0.5
-            };
 
-            R = new double[] {
-                0,
-                0,
-                1,
-                0.1,
-                0.1,
-                10
-            };
-
-            for (int i = 0; i < N; i++) {
-                pFilt[i][i] = Q[i];
-            }
            
 
 
 
             _simIntervalTimer?.Dispose();
             StartupEvent?.Invoke("starting controlIntervalTimer...");
-            _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 100));
+            _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 1000));
         }
 
         public void Reset() {
@@ -129,35 +113,48 @@ namespace Core.Modules {
             _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 100));
         }
 
+        bool simstate = false;
+
         private void SimTimerCallback(object? state) {
+            if (simstate) return;
+
+            simstate = true;
             // determine time...
-            _tNow = ( DateTime.Now - _startTime ).TotalSeconds;
+            _tNow = ( DateTime.Now - _startTime ).TotalSeconds;       
             DeltaTime = _tNow - _tLast;
+
 
             // Get control inputs to the system
             // when feed automation is active, it may run in pwm mode, and then, querying the setpoint wil result in wrong values
             if (_dataStore.GetLastControllerDatum().Automatic[3])
                 _acualFeedRate = _reactorControl.CalculatedFeedRateValue / 3600;
-            else
-                _acualFeedRate = _dataStore.GetLastControllerDatum().Setpoints[3] / 3600;
+            //else
+            //    _acualFeedRate = _dataStore.GetLastControllerDatum().Setpoints[3] / 3600;
             _acualVentilationRate = _dataStore.GetLastControllerDatum().Setpoints[2] / 60;
 
 
             // calculate sigma points (adding/subtracting scaled errors to last known state)
+            
             sigmaPoints[0] = (double[]) _simStateValues.Clone();
             for (int i = 0; i < N; i++) {
                 sigmaPoints[i + 1] = (double[]) _simStateValues.Clone();
                 sigmaPoints[i + 1 + N] = (double[]) _simStateValues.Clone();
                 for (int j = 0; j < N; j++) {
-                    sigmaPoints[i + 1][j]     += pFilt[i][j] * (N + lambda);
-                    sigmaPoints[i + 1 + N][j] -= pFilt[i][j] * (N + lambda);
+                    sigmaPoints[i + 1][j]     += pFilt[i,j] * (N + lambda);
+                    sigmaPoints[i + 1 + N][j] -= pFilt[i,j] * (N + lambda);
                 }
             }
+            Debug.Print(""); Debug.Print(""); Debug.Print(""); Debug.Print("");
+            Debug.Print("*******************************************************************");
 
             // perform simulation for each sigma point
             for (int i = 0; i < NSP; i++) {
                 (_, sigmaPointStates[i]) = RK45SolverLast(model: SimModel, initialValues: sigmaPoints[i], xStart: _tLast, xEnd: _tNow, tol: 1e-8);
+                for (int j = 0; j < N; j++)
+                    if (sigmaPointStates[i][j] < 0)
+                        sigmaPointStates[i][j] = 0;
             }
+            Debug.Print("Prozesssimulation (Sigma Points):");
 
             // calculate weigted state value -> prediction
             for (int i = 0; i < N; i++) {
@@ -166,54 +163,75 @@ namespace Core.Modules {
                     _simStateValues[i] += sigmaPointStates[j][i] * w[j];
                 }
             }
+            Matrix<double> simState = Matrix<double>.Build.DenseOfRowArrays(_simStateValues);
+            Debug.Print(simState.ToMatrixString());
 
             // estimate simulation error
             for (int i = 0; i < N; i++) {
                 for (int j = 0; j < N; j++) {
-                    P[i][j] = Q[i] * (_tNow - _tLast);
+                    P[i,j] = Q[i,j] * (_tNow - _tLast);
                 }
             }
             for (int j = 0; j < NSP; j++) {
                 for (int k = 0; k < N; k++) {
                     for (int l = 0; l < N; l++) {
-                        P[k][l] += wc[j] * ( sigmaPointStates[j][k] - _simStateValues[k] ) * ( sigmaPointStates[j][l] - _simStateValues[l] );
+                        P[k,l] += wc[j] * ( sigmaPointStates[j][k] - _simStateValues[k] ) * ( sigmaPointStates[j][l] - _simStateValues[l] );
                     }
                 }
             }
 
+            Debug.Print("Prozesskovarianz (Sigma Points):");
+            Debug.Print(P.ToMatrixString());
+
             // Kalman filter calculation
-            measuredState = new double[] {
-                0, // biomass unavailable
-                0, // glucose unavailable
+            Debug.Print("Messung:");
+            Matrix<double> measuredState = Matrix<double>.Build.DenseOfRowArrays(
+                new double[] {
                 _dataStore.GetLastComputedValueDatum().Ethanol, // ethanol
-                _dataStore.GetLastControllerDatum().Values[7],  // oxygen
-                _dataStore.GetLastControllerDatum().Values[4],  // temperature
+                _dataStore.GetLastControllerDatum().Values[7] / 1000,  // oxygen
+                _dataStore.GetLastControllerDatum().Values[4] + 273.15,  // temperature
                 _dataStore.GetLastControllerDatum().Values[0],  // volume
-            };
+                }    
+            );
+            Debug.Print(measuredState.ToMatrixString());
+
+            //more debug Print
+            Debug.Print("Messmodell:");
+            Debug.Print(H.ToMatrixString());
+
+            Debug.Print("Messrauschen:");
+            Debug.Print(R.ToMatrixString());
+
+            Debug.Print("Prozessrauschen:");
+            Debug.Print(Q.ToMatrixString());
 
             //Kalman Gain
-            for (int i = 0; i < N; i++) {
-                for (int j = 0; j < N; j++) {
-                    K[i][j] = P[i][j] / (P[i][j] + H[j] * R[j] );
-                }
-            }
+            K = ( P*H.Transpose()*(H*P*H.Transpose()+R).Inverse());
+
+
+
+            Debug.Print("Kalman Gain:"); 
+            Debug.Print(K.ToMatrixString());
 
             // Filtered state
-            for (int i = 0; i < N; i++) {
-                for (int j = 0; j < N; j++) {
+            Debug.Print("Zustand geschätzt (Kalman):");
 
-                    _filteredStateValues[j] = _simStateValues[j] + K[j][i] * ( measuredState[j] - _simStateValues[j] );
-                }
+            Matrix<double> fS = 
+                ( simState.Transpose() + K  * ( measuredState.Transpose() - H*simState.Transpose() )).Transpose();
+            
+            Debug.Print(fS.ToMatrixString());
+
+
+            for (int j = 0; j < N; j++) {
+                _simStateValues[j] = fS[0,j];
             }
+
+
 
             // Filtered Error
-            for (int i = 0; i < N; i++) {
-                for (int j = 0; j < N; j++) {
-                    pFilt[i][j] -= K[i][j] * H[j] * P[i][j];
-                }
-            }
-
-
+            pFilt = (P - K * H * P);
+            Debug.Print("Prozesskovarianz geschätzt (Kalman):");
+            Debug.Print(pFilt.ToMatrixString());
 
             //later addition: sum up the total feed volume
             TotalFeedVolume += _acualFeedRate * ( _tNow - _tLast );
@@ -221,24 +239,10 @@ namespace Core.Modules {
             // update values
             _tLast = _tNow;
             lock (_lock) {
-                //_simStateValues = (double[]) Y.Clone();
                 _allSimTimesUntilNow.Add(_tNow);
                 _allSimValuesUntilNow.Add((double[]) _simStateValues.Clone());
             }
 
-            //double measuredTemp = _dataStore.GetLastControllerDatum().Values[4] + 273.15;
-            //double measuredVolume = _dataStore.GetLastControllerDatum().Values[0];
-            //double measuredEthanol = _dataStore.GetLastComputedValueDatum().Ethanol;
-            //double measuredOxygen = _dataStore.GetLastControllerDatum().Values[7] / 1000;
-
-            //// temp correction
-            //_simStateValues[4] = ( _simStateValues[4] * 199 + measuredTemp ) / 200;
-            ////volume correction
-            //_simStateValues[5] = ( _simStateValues[5] * 199 + measuredVolume ) / 200;
-            ////ethanol correction
-            //_simStateValues[2] = ( _simStateValues[2] * 199 + measuredEthanol ) / 200;
-            ////oxygen correction
-            //_simStateValues[3] = ( _simStateValues[3] * 199 + measuredOxygen ) / 200; ;
 
             // solve from now to 2 hours in the future
             (List<double> TL, List<double[]> YL) = RK45Solver(model: SimModel,
@@ -250,25 +254,23 @@ namespace Core.Modules {
                 _FutureSimTimes2Hours = TL.ToArray().ToList();
                 _FutureSimValues2Hours = YL.ToArray().ToList();
             }
+            simstate = false;
             SimulationStepFinished?.Invoke();
         }
 
 
         double[] w, wc;
-        double[] Q, R;
-        double[] H;
+        Matrix<double> Q, R, H, P, K, pFilt;
         double[] _filteredStateValues;
         double[] measuredState;
-        double[][] sigmaPoints, pFilt;
+        double[][] sigmaPoints;
         double[][] sigmaPointStates;
-        double[][] P;
-        double[][] K;
         int N, NSP;
         double lambda;
 
         private void InitializeSigmaPoints() {
             // solve for model error determination (sigma points / unscented transform)
-            const double alpha = 1e-3;
+            const double alpha = 0.01;
             const double kappa = 0;
             const double beta = 2;
 
@@ -281,7 +283,15 @@ namespace Core.Modules {
                 w[i] = 1 / ( 2 * ( N + lambda ) );
             }
 
-            H = new double[] { 0, 0, 1, 1, 1, 1 };
+
+            double[,] tmp = 
+                { { 0,0,1,0,0,0},
+                  { 0,0,0,1,0,0},
+                  { 0,0,0,0,1,0},
+                  { 0,0,0,0,0,1} };
+            H = Matrix<double>.Build.DenseOfArray(tmp);
+
+
 
             wc = new double[NSP];
             wc[0] = lambda / ( N + lambda ) + ( 1 - alpha * alpha + beta );
@@ -289,20 +299,14 @@ namespace Core.Modules {
                 wc[i] = w[i];
             }
 
-            pFilt = new double[N][];
-            for (int i = 0; i < N; i++) {
-                pFilt[i] = new double[N];
-            }
 
-            P = new double[N][];
-            for (int i = 0; i < N; i++) {
-                P[i] = new double[N];
-            }
+            P = Matrix<double>.Build.Dense(N, N);
+            K = Matrix<double>.Build.Dense(N, N);
+            Q = Matrix<double>.Build.DenseOfDiagonalArray(new double[] { 0.2,  0.2,.1, 0.1, 0.2, 0.5});
+            R = Matrix<double>.Build.DenseOfDiagonalArray(new double[] { 1, 0.2, 0.5, 10});
+            pFilt = Q.Clone();
 
-            K = new double[N][];
-            for (int i = 0; i < N; i++) {
-                K[i] = new double[N];
-            }
+
 
             sigmaPoints = new double[NSP][];
             for (int i = 0; i < NSP; i++) {
@@ -381,7 +385,7 @@ namespace Core.Modules {
 
             double dO2 = -X * ( _appSettings.SimSettings.RequiredOxygenOx * m_ox + _appSettings.SimSettings.RequiredOxygenRed * m_red ) * ox_factor 
                         - _acualFeedRate / V * O2           
-                        + _acualVentilationRate / V  * (0.012 - Math.Max(O2,0)) * 10;
+                        + _acualVentilationRate / V  * (0.0082 - Math.Max(O2,0)) * 10;
 
             double dT = _acualFeedRate / V * ( _appSettings.SimSettings.FeedTemp - T ) 
                          + RE / TSimulationSettings.WATER_SPECIFIC_HEAT / V 
