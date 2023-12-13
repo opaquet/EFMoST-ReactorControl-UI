@@ -21,6 +21,7 @@ namespace Core.Modules.Interfaces
         double Temperature { get; set; }
         double Volume { get; set; }
         double DeltaTime { get; }
+        double CalcTime { get; }
         double TotalFeedVolume { get; }
         void Begin();
         void Reset();

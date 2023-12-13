@@ -1,10 +1,8 @@
 ﻿using Core.DataTypes;
 using Core.Modules.Interfaces;
 using System.Diagnostics;
-using MathNet.Numerics;
-using MathNet.Numerics.LinearAlgebra.Complex;
-using System.Numerics;
 using MathNet.Numerics.LinearAlgebra;
+
 
 namespace Core.Modules {
     internal class ProcessSimulation : IProcessSimulation, IDisposable {
@@ -12,26 +10,18 @@ namespace Core.Modules {
         public event Action<string, int>? LogEvent;
         public event Action<string>? StartupEvent;
         public event Action? SimulationStepFinished;
-        public IReadOnlyList<double> SimTimeValues {
-            get { lock (_lock) { return _allSimTimesUntilNow; } }
-        }
-        public IReadOnlyList<double> SimTimePredictions {
-            get { lock (_lock) { return _FutureSimTimes2Hours; } }
-        }
-        public IReadOnlyList<double[]> SimStateValues {
-            get { lock (_lock) { return _allSimValuesUntilNow; } }
-        }
-        public IReadOnlyList<double[]> SimStatePredictions {
-            get { lock (_lock) { return _FutureSimValues2Hours; } }
-        }
+        public IReadOnlyList<double> SimTimeValues => GetThreadSafeValue(_allSimTimesUntilNow);
+        public IReadOnlyList<double> SimTimePredictions => GetThreadSafeValue(_FutureSimTimes2Hours);
+        public IReadOnlyList<double[]> SimStateValues => GetThreadSafeValue(_allSimValuesUntilNow);
+        public IReadOnlyList<double[]> SimStatePredictions => GetThreadSafeValue(_FutureSimValues2Hours);
 
-        private object _lock = new object();
+        private readonly object _lock = new object();
         private IAppSettings _appSettings;
         private IDataHandler _dataStore;
         private IReactorControl _reactorControl;
 
-        private double _acualFeedRate = 0;
-        private double _acualVentilationRate = 0;
+        private double _actualFeedRate = 0;
+        private double _actualVentilationRate = 0;
         private double[] _simStateValues = new double[6];
 
         public double Biomass { get => _simStateValues[0]; set => _simStateValues[0] = value; }
@@ -43,6 +33,7 @@ namespace Core.Modules {
         public double TotalFeedVolume { get; private set; } = 0;
 
         public double DeltaTime { get; private set; } = 0;
+        public double CalcTime { get; private set; } = 0;
 
         private List<double> _allSimTimesUntilNow = new List<double>();
         private List<double> _FutureSimTimes2Hours = new List<double>();
@@ -60,6 +51,12 @@ namespace Core.Modules {
             _appSettings = settings;
             _dataStore = dataHandler;
             _reactorControl = reactorControl;
+
+
+        }
+
+        private IReadOnlyList<T> GetThreadSafeValue<T>(List<T> list) {
+            lock (_lock) { return new List<T>(list); }
         }
 
         public void Dispose() {
@@ -81,12 +78,6 @@ namespace Core.Modules {
             };
 
             InitializeSigmaPoints();
-
-            // process noise covariance (for unscented transform)
-
-           
-
-
 
             _simIntervalTimer?.Dispose();
             StartupEvent?.Invoke("starting controlIntervalTimer...");
@@ -110,7 +101,7 @@ namespace Core.Modules {
                 _FutureSimValues2Hours = new List<double[]>();
             }
 
-            _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 100));
+            _simIntervalTimer = new Timer(SimTimerCallback, null, 0, Convert.ToInt32(_appSettings.SimSettings.SimDeltaTime * 1000));
         }
 
         bool simstate = false;
@@ -127,10 +118,10 @@ namespace Core.Modules {
             // Get control inputs to the system
             // when feed automation is active, it may run in pwm mode, and then, querying the setpoint wil result in wrong values
             if (_dataStore.GetLastControllerDatum().Automatic[3])
-                _acualFeedRate = _reactorControl.CalculatedFeedRateValue / 3600;
+                _actualFeedRate = _reactorControl.CalculatedFeedRateValue / 3600;
             //else
             //    _acualFeedRate = _dataStore.GetLastControllerDatum().Setpoints[3] / 3600;
-            _acualVentilationRate = _dataStore.GetLastControllerDatum().Setpoints[2] / 60;
+            _actualVentilationRate = _dataStore.GetLastControllerDatum().Setpoints[2] / 60;
 
 
             // calculate sigma points (adding/subtracting scaled errors to last known state)
@@ -150,9 +141,7 @@ namespace Core.Modules {
             // perform simulation for each sigma point
             for (int i = 0; i < NSP; i++) {
                 (_, sigmaPointStates[i]) = RK45SolverLast(model: SimModel, initialValues: sigmaPoints[i], xStart: _tLast, xEnd: _tNow, tol: 1e-8);
-                for (int j = 0; j < N; j++)
-                    if (sigmaPointStates[i][j] < 0)
-                        sigmaPointStates[i][j] = 0;
+
             }
             Debug.Print("Prozesssimulation (Sigma Points):");
 
@@ -234,10 +223,10 @@ namespace Core.Modules {
             Debug.Print(pFilt.ToMatrixString());
 
             //later addition: sum up the total feed volume
-            TotalFeedVolume += _acualFeedRate * ( _tNow - _tLast );
+            TotalFeedVolume += _actualFeedRate * ( _tNow - _tLast );
 
             // update values
-            _tLast = _tNow;
+            
             lock (_lock) {
                 _allSimTimesUntilNow.Add(_tNow);
                 _allSimValuesUntilNow.Add((double[]) _simStateValues.Clone());
@@ -255,6 +244,9 @@ namespace Core.Modules {
                 _FutureSimValues2Hours = YL.ToArray().ToList();
             }
             simstate = false;
+
+            CalcTime = ( DateTime.Now - _startTime ).TotalSeconds - _tNow;
+            _tLast = _tNow;
             SimulationStepFinished?.Invoke();
         }
 
@@ -284,12 +276,12 @@ namespace Core.Modules {
             }
 
 
-            double[,] tmp = 
+            H = Matrix<double>.Build.DenseOfArray(new double[,]  
                 { { 0,0,1,0,0,0},
                   { 0,0,0,1,0,0},
                   { 0,0,0,0,1,0},
-                  { 0,0,0,0,0,1} };
-            H = Matrix<double>.Build.DenseOfArray(tmp);
+                  { 0,0,0,0,0,1} }
+            );
 
 
 
@@ -375,24 +367,24 @@ namespace Core.Modules {
 
             // the actual 6 differential equations:
             double dX = X * ( m_ox + m_red + m_eth ) 
-                        - _acualFeedRate / V * X;
+                        - _actualFeedRate / V * X;
 
             double dG = -X * ( m_ox / _appSettings.SimSettings.YieldGOx + m_red / _appSettings.SimSettings.YieldGRed ) 
-                        + _acualFeedRate / V * ( _appSettings.SimSettings.FeedSugarConcentration - G );
+                        + _actualFeedRate / V * ( _appSettings.SimSettings.FeedSugarConcentration - G );
 
             double dE = X * ( m_red / _appSettings.SimSettings.YieldGRed - m_eth / _appSettings.SimSettings.YieldGRed ) 
-                        - _acualFeedRate / V * E;
+                        - _actualFeedRate / V * E;
 
             double dO2 = -X * ( _appSettings.SimSettings.RequiredOxygenOx * m_ox + _appSettings.SimSettings.RequiredOxygenRed * m_red ) * ox_factor 
-                        - _acualFeedRate / V * O2           
-                        + _acualVentilationRate / V  * (0.0082 - Math.Max(O2,0)) * 10;
+                        - _actualFeedRate / V * O2           
+                        + _actualVentilationRate / V  * (0.0082 - Math.Max(O2,0)) * 10;
 
-            double dT = _acualFeedRate / V * ( _appSettings.SimSettings.FeedTemp - T ) 
+            double dT = _actualFeedRate / V * ( _appSettings.SimSettings.FeedTemp - T ) 
                          + RE / TSimulationSettings.WATER_SPECIFIC_HEAT / V 
                          + ( _appSettings.SimSettings.EnviromentTemp - T ) * CoolingSurface(V) * _appSettings.SimSettings.HeatTransferCoeffienctSteelAir / TSimulationSettings.WATER_SPECIFIC_HEAT / V 
                          + act_cool * _appSettings.SimSettings.CoolantFlow * TSimulationSettings.WATER_SPECIFIC_HEAT * ( _appSettings.SimSettings.CoolantTemp - T ) / TSimulationSettings.WATER_SPECIFIC_HEAT / V;
             
-            double dV = _acualFeedRate;
+            double dV = _actualFeedRate;
 
             return new double[] { dX, dG, dE, dO2, dT, dV };
         }
@@ -410,7 +402,7 @@ namespace Core.Modules {
         /// <returns>An arry containing the state at the last point in time (or x)</returns>
         private (double, double[]) RK45SolverLast(Func<double, double[], double[]> model, double[] initialValues, double xEnd = 100, double tol = 1e-6, double xStart = 0) {
             (List<double> X, List<double[]> Y) = RK45Solver(model, initialValues, xEnd, tol, xStart);
-            return (X.Last(),(double[]) Y.Last().Clone());
+            return (X.Last(), Y.Last().Select(p => ( p < 0 ) ? 0 : p).ToArray());
         }
 
         /// <summary>
@@ -459,7 +451,7 @@ namespace Core.Modules {
                 errorTooLarge = true;
                 if (error <= tol) {
                     y = y_new;
-                    _acualFeedRate += _acualFeedRate * _appSettings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement * dx/3600;
+                    _actualFeedRate += _actualFeedRate * _appSettings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement * dx/3600;
                     x += dx;
                     errorTooLarge = false;
                 }
@@ -470,7 +462,7 @@ namespace Core.Modules {
             y = yValues.Last();
             if (x < xEnd) {
                 dx = xEnd - x;
-                _acualFeedRate += _acualFeedRate * _appSettings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement * dx / 3600;
+                _actualFeedRate += _actualFeedRate * _appSettings.ReactorControlSettings.FeedControlSettings.FeedRateIncrement * dx / 3600;
                 double[] k1 = model(x, y);
                 double[] k2 = model(x + 0.25 * dx, AddArrays(y, ScaleArray(k1, 0.25 * dx)));
                 double[] k3 = model(x + 3.0 / 8.0 * dx, AddArrays(y, AddArrays(ScaleArray(k1, 3.0 / 32.0 * dx), ScaleArray(k2, 9.0 / 32.0 * dx))));

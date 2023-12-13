@@ -3,7 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Ink;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace UI.UserControls.MainPanels {
     /// <summary>
@@ -13,11 +15,14 @@ namespace UI.UserControls.MainPanels {
         private ViewModel.MainViewModel? _VM;
         private CancellationTokenSource cts = new();
         private bool isDisposed = false;
+        private int FillLevelTopCoord = 0;
+        private Ellipse[] Bubbles;
 
         private bool MotorIsRunning { get => (_VM?.DigitalOutIndicators?[8].IsIndicating ?? false) || (_VM?.DigitalOutIndicators?[9].IsIndicating ?? false); }
 
         public StatusPanel() {
             InitializeComponent();
+            Bubbles = new Ellipse[] { bubble1, bubble2, bubble3, bubble4, bubble5, bubble6, bubble7, };
             DataContextChanged += PanelStatus_DataContextChanged;
             Loaded += (_, _) => {
                 var parentWindow = Window.GetWindow(this);
@@ -43,11 +48,23 @@ namespace UI.UserControls.MainPanels {
             int[] BottomVal = { 265, 270, 280, 290, 290, 280, 270, 265 };
             int[] Width = { 15, 10, 8, 6, 6, 8, 10, 15 };
             int idx = 0;
+            int[] BubbleX = { 350, 357, 380, 400, 411, 425, 435 };
+            int[] BubbleY = { 271, 320, 325, 315, 260, 312, 294 };
+            
+            Random rnd = new Random();
+
             while (!isDisposed && !cts.Token.IsCancellationRequested) {
                 string pathData = MotorIsRunning
                             ? $"M450,295 A5,{Width[idx]},180,0,0,450,{TopVal[idx]} A5,{Width[idx]},180,0,0,450,295 A5,{Width[idx]},180,0,1,450,{BottomVal[idx]} A5,{Width[idx]},180,0,1,450,295"
                             : "M450,295 A5,15,180,0,0,450,325 A5,15,180,0,0,450,295 A5,15,180,0,1,450,265 A5,15,180,0,1,450,295";
                 UpdateUI(() => Rührerblatt.Data = Geometry.Parse(pathData));
+
+                for (int i = 0; i < Bubbles.Length; i++) {
+                    BubbleY[i]-= rnd.Next(5);
+                    if (BubbleY[i] < FillLevelTopCoord) BubbleY[i] = 325;
+                    UpdateUI(() => Bubbles[i].Margin = new Thickness(BubbleX[i], BubbleY[i], 0, 0));
+                }
+               
 
                 try {
                     await Task.Delay(20, cts.Token);
@@ -76,10 +93,27 @@ namespace UI.UserControls.MainPanels {
             return new SolidColorBrush(condition ? Color.FromRgb(64, 240, 64) : Color.FromRgb(211, 211, 211));
         }
 
+        private static SolidColorBrush GetBrushCool(bool condition) {
+            return new SolidColorBrush(condition ? Color.FromRgb(128, 128, 240) : Color.FromRgb(211, 211, 211));
+        }
+
+        private static SolidColorBrush GetBrushHeat(bool condition) {
+            return new SolidColorBrush(condition ? Color.FromRgb(240, 128, 128) : Color.FromRgb(211, 211, 211));
+        }
+
 
         public void UpdateStatus() {
             if (_VM == null) { return; }
             // Druckluft
+            for (int i = 0; i < Bubbles.Length; i++) {
+                if (_VM.AnalogOutValues[2].Value > 0) {
+                    Bubbles[i].StrokeThickness = 1;
+                    Bubbles[i].Fill = new SolidColorBrush(Color.FromRgb(255, 255, 255));
+                } else {
+                    Bubbles[i].StrokeThickness = 0;
+                    Bubbles[i].Fill = new SolidColorBrush(Color.FromRgb(173, 216, 230));
+                }
+            }
             v_air.Fill = GetBrush(_VM.DigitalOutIndicators[1].IsIndicating);
             v_air_prop_center.Fill = GetBrush(_VM.DigitalOutIndicators[3].IsIndicating);
             v_air_prop.Fill = GetBrush(_VM.AnalogOutValues[2].Value > 0);
@@ -96,7 +130,11 @@ namespace UI.UserControls.MainPanels {
 
             //Kühlwasser
             v_coolwater_m.Fill = GetBrush(_VM.DigitalOutIndicators[5].IsIndicating);
+            cool_surf1.Fill = GetBrushCool(_VM.DigitalOutIndicators[5].IsIndicating);
+            cool_surf2.Fill = GetBrushCool(_VM.DigitalOutIndicators[5].IsIndicating);
+
             v_coolwater_b.Fill = GetBrush(_VM.DigitalOutIndicators[6].IsIndicating);
+            heat_surf1.Fill = GetBrushHeat(_VM.DigitalOutIndicators[6].IsIndicating);
 
             //motor
             motor_prop.Fill = GetBrush(MotorIsRunning);
@@ -117,9 +155,9 @@ namespace UI.UserControls.MainPanels {
             //Füllstand
             double V = _VM.MeasurementValues[0].Value;
             V = Math.Min(1200, Math.Max(0, V));
-            double L = 290 - V / 1200 * 190;
-            pic_LevelP1.StartPoint = new Point(308, L);
-            pic_LevelP2.Point = new Point(492, L);
+            FillLevelTopCoord = (int) (290 - V / 1200 * 190);
+            pic_LevelP1.StartPoint = new Point(308, FillLevelTopCoord);
+            pic_LevelP2.Point = new Point(492, FillLevelTopCoord);
 
             //Gas Sensor
         

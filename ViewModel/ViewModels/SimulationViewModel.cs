@@ -11,6 +11,7 @@ namespace ViewModel.ViewModels  {
         private IProcessSimulation _processSim;
 
         public double DeltaTime { get => _processSim.DeltaTime; }
+        public double CalcTime { get => _processSim.CalcTime; }
 
         public double[] Time { get => Reduce(_processSim.SimTimeValues); }
         public double[] TimeFuture { get => Reduce(_processSim.SimTimePredictions); }

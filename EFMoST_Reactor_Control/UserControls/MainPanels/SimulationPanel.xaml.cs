@@ -112,7 +112,7 @@ namespace UI.UserControls.MainPanels {
         private void UpdateText() {
             try {
                 Dispatcher.Invoke(() => {
-                    labelDt.Text = $"dt = {( (viewModel?.Simulation?.DeltaTime ?? 0) * 1000 ):F0} ms";
+                    labelDt.Text = $"dt = {( ( viewModel?.Simulation?.CalcTime ?? 0 ) * 1000 ):F0} / {( (viewModel?.Simulation?.DeltaTime ?? 0) * 1000 ):F0} ms";
                     labelTotalt.Text = $"total t = {t:F0} s";
 
                     labelFeedG.Text = $"Feed Gesamtzucker = {( (viewModel?.Simulation?.TotalFeedVolume ?? 0 ) * 800 ):F0} g";
