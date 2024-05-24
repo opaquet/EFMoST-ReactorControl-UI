@@ -456,7 +456,11 @@ namespace Core.Modules
 
             // coefficients/parameters for (non)linear regression from the latent variables to the actual ethanol concentration
             double[] parameters = { 0.697695734815521, 536.806245267187, 122372.306520375 };
+
+            parameters[0] = 0;
+
             double EthanolConcentration = parameters[0] + parameters[1] * Scores + parameters[2] * Scores * Scores;
+            EthanolConcentration *= 2.25;
             EthanolConcentration = (EthanolConcentration < 0) ? 0 : EthanolConcentration; // ignore values smaller 0
 
             return EthanolConcentration;
