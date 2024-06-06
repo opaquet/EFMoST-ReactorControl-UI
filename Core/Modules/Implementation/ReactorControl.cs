@@ -260,25 +260,27 @@ namespace Core.Modules
             // convert actual feedrate int a 10bit dac compatible int value
             double feedrateWithTemperatureLimit = ApplyMaxTemperatureFeedThrottling(feedrateLPerH, ReactorTemperature, _settings.TemperatureMaxValue, _settings.TemperatureSetpoint);
             double feedrate10bitValue = CalculateActualFeedrate(feedrateWithTemperatureLimit);
-            if (feedrate10bitValue < _settings.ControlPWMLowThresholdValue) {
-                // Compute duty-cycle/on-time based on Input
-                // Use sligthtly higher pumpspeed and reduce duty cycle accordingly
-                int actualPWMfeedrateoutput = Convert.ToInt32(_settings.ControlPWMLowThresholdValue / _settings.ControlPWMMaxDutyCycle);
-                double onTimeFactor = _settings.ControlPWMMaxDutyCycle * _settings.ReactorControlTimerIntervalMilliseconds;
-                double onTimeFraction = feedrate10bitValue / actualPWMfeedrateoutput;
 
-                int onTime = (int)( onTimeFactor * onTimeFraction );
-                //turn controlinput on
-                string activateString = IsFeedControlActive ? "" : "SA(4,1);";
-                _sendCommandToControllerMCU($"!{activateString}SP(3,{actualPWMfeedrateoutput});AI\n");
-                // Timer to turn controlinput off after duty cycle
-                _pwmFeedControlOffTimer?.Dispose();
-                _pwmFeedControlOffTimer = new Timer(PwmFeedControlOffTimerCallback, null, onTime, Timeout.Infinite);
-            } else {
+        /// Uncommented the pwm control part since it is now part of the plc
+        ///    if (feedrate10bitValue < _settings.ControlPWMLowThresholdValue) {
+        ///        // Compute duty-cycle/on-time based on Input
+        ///        // Use sligthtly higher pumpspeed and reduce duty cycle accordingly
+        ///        int actualPWMfeedrateoutput = Convert.ToInt32(_settings.ControlPWMLowThresholdValue / _settings.ControlPWMMaxDutyCycle);
+        ///        double onTimeFactor = _settings.ControlPWMMaxDutyCycle * _settings.ReactorControlTimerIntervalMilliseconds;
+        ///        double onTimeFraction = feedrate10bitValue / actualPWMfeedrateoutput;
+        ///
+        ///        int onTime = (int)( onTimeFactor * onTimeFraction );
+        ///        //turn controlinput on
+        ///        string activateString = IsFeedControlActive ? "" : "SA(4,1);";
+        ///        _sendCommandToControllerMCU($"!{activateString}SP(3,{actualPWMfeedrateoutput});AI\n");
+        ///        // Timer to turn controlinput off after duty cycle
+        ///        _pwmFeedControlOffTimer?.Dispose();
+        ///        _pwmFeedControlOffTimer = new Timer(PwmFeedControlOffTimerCallback, null, onTime, Timeout.Infinite);
+        ///    } else {
                 // turn feed control to active if it is set to off for whatever reason
                 string activateString = IsFeedControlActive ? "" : "SA(4,1);";
                 _sendCommandToControllerMCU($"!{activateString}SP(3,{Convert.ToInt32(feedrate10bitValue)});AI\n");
-            }
+        ///    }
         }
 
         /// <summary>
@@ -334,13 +336,16 @@ namespace Core.Modules
         /// Feedrate PWM timer callback to turn off feed pump after the duty cycle time, when in PWM mode.
         /// </summary>
         /// <param name="state"></param>
-        private void PwmFeedControlOffTimerCallback(object? state) {
-            if (_sendCommandToControllerMCU == null) { return; }
-            _sendCommandToControllerMCU($"!SA(4,0);SP(3,0);AI\n");
-            try {
-                ControlCycleFinished?.Invoke();
-            } catch (Exception ex) { LogEvent?.Invoke($"Error updating UI: {ex.Message}", 0); }
-        }
+        /// 
+        /// No longer needed!!!
+        
+        /// private void PwmFeedControlOffTimerCallback(object? state) {
+        ///    if (_sendCommandToControllerMCU == null) { return; }
+        ///    _sendCommandToControllerMCU($"!SA(4,0);SP(3,0);AI\n");
+        ///    try {
+        ///        ControlCycleFinished?.Invoke();
+        ///    } catch (Exception ex) { LogEvent?.Invoke($"Error updating UI: {ex.Message}", 0); }
+        ///}
         #endregion
 
         #region ventilation related methods
